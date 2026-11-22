@@ -1,0 +1,50 @@
+/// <reference types="vitest/config" />
+import { fileURLToPath, URL } from 'node:url'
+
+import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+import vuetify from 'vite-plugin-vuetify'
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    vue(),
+    vuetify({
+      autoImport: true,
+      // 测试环境由 Vitest 处理 CSS，关闭 Vuetify 的 sass 虚拟模块，
+      // 否则 virtual:plugin-vuetify:* 在 Node 侧无法解析。
+      styles: mode === 'test' ? 'none' : { configFile: 'src/styles/settings.scss' },
+    }),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+    // 开发期同源代理：浏览器只访问 Vite dev server，后端不需要 CORS。
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+  test: {
+    environment: 'happy-dom',
+    include: ['src/**/*.spec.ts'],
+    // Vuetify 的组件入口直接 import .css，需交给 Vite 转换而不是 Node 直接加载。
+    server: {
+      deps: {
+        inline: ['vuetify'],
+      },
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['src/api/schema.d.ts', 'src/main.ts', 'src/**/*.spec.ts'],
+    },
+  },
+}))
