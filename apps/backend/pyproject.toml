@@ -1,0 +1,122 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "daily-suite 后端（Django + DRF）"
+requires-python = ">=3.12"
+dependencies = [
+    "argon2-cffi~=25.1.0",
+    "django~=6.1.3",
+    "django-environ~=0.14.0",
+    "django-filter~=26.2",
+    "djangorestframework~=3.18.3",
+    "drf-spectacular~=0.30.0",
+    "nh3~=0.3.8",
+    "psycopg[binary]~=3.3.9",
+]
+
+[dependency-groups]
+dev = [
+    "allure-pytest~=2.16.2",
+    "deptry~=0.25.1",
+    "django-stubs~=6.1.2",
+    "djangorestframework-stubs~=3.18.2",
+    "factory-boy~=3.3.3",
+    "freezegun~=1.5.5",
+    "mypy~=2.4.1",
+    "pip-audit~=2.10.1",
+    "pytest~=9.2.0",
+    "pytest-cov~=7.1.0",
+    "pytest-django~=4.14.0",
+    "respx~=0.23.1",
+    "ruff~=0.17.6",
+]
+
+# 安全静态扫描工具组：仅 CI 使用，本地默认不装。
+# 本地开发者执行 uv sync 不会安装本组；CI 中用 uv sync --group ci 额外装入。
+ci = [
+    "bandit~=1.9.4",
+    "semgrep~=1.186.0",
+]
+
+# ---------- pytest / coverage ----------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["."]
+testpaths = ["tests"]
+# 覆盖率随测试一起跑，低于 100% 直接判失败。
+addopts = "-ra --cov=config --cov-fail-under=100"
+
+[tool.coverage.run]
+source = ["config"]
+# 分支覆盖同样计入：只有行覆盖 100% 不够，条件分支必须都走到。
+branch = true
+# 下列文件均为脚手架模板/运行时装配代码，不含可测业务逻辑，故排除：
+# - manage.py：Django 命令行入口，仅做环境变量与命令分发；
+# - config/asgi.py、config/wsgi.py：部署服务器装配的 ASGI/WSGI 入口，只是把 settings 挂载出去；
+# - config/settings/：整个 settings 包（base/dev/prod/test）是纯配置声明，
+#   不含业务逻辑，测试期间被导入即视为已覆盖，逐行度量没有意义。
+#   覆盖率以绝对路径匹配 omit 模式，故需用前导 "*/" 才能命中整包。
+omit = [
+    "manage.py",
+    "config/asgi.py",
+    "*/config/settings/*",
+    "config/wsgi.py",
+]
+
+[tool.coverage.report]
+# 严格门槛：行覆盖与分支覆盖任一项不达标即失败。
+fail_under = 100
+show_missing = true
+
+# ---------- ruff ----------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# 启用全部规则；与 Django/中文项目本质冲突或互相矛盾的少数规则在下方逐条豁免。
+select = ["ALL"]
+ignore = [
+    # 版权头策略未确定，强制每个文件写版权声明属于过度刻板要求。
+    "CPY001",
+    # 与 ruff format 冲突：官方建议启用 formatter 时禁用（尾逗号由 format 统一处理）。
+    "COM812",
+    # D203 与 D211 互斥（类定义前是否空行），保留 D211；D213 与 D212 互斥（多行 docstring
+    # 摘要位置），保留 D212。二者与 ruff format 的默认风格一致。
+    "D203",
+    "D213",
+    # 本项目 docstring 用中文书写并以全角句号“。”结尾，而 pydocstyle 只识别 ASCII 标点，
+    # 必然误报，属语言层面的本质冲突。
+    "D400",
+    "D415",
+    # 中文注释/docstring 中的全角标点（，：；（））是刻意书写，不是拼写歧义。
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# manage.py 是 Django 官方脚手架：为在未安装 Django 时给出友好提示而采用函数内延迟导入；
+# 异常消息直接使用字符串字面量（TRY003/EM101）以保持与官方模板一致。
+"manage.py" = ["EM101", "PLC0415", "TRY003"]
+# 测试代码：assert 是 pytest 的断言语义本体；HTTP 状态码等字面量可读性优于常量；
+# 测试函数无需逐条 docstring；tests 目录按 pytest 约定不使用 __init__.py。
+"tests/**" = ["D103", "INP001", "PLR2004", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config"]
+
+# ---------- mypy / django-stubs ----------
+[tool.mypy]
+python_version = "3.12"
+# 一次性启用全套严格选项（等价于下方逐项开启，故不再重复列出）。
+strict = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+files = ["config", "tests"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[[tool.mypy.overrides]]
+module = ["environ", "environ.*"]
+ignore_missing_imports = true
