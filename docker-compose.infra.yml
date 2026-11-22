@@ -1,0 +1,195 @@
+# ==========================================================
+# 基础设施编排：postgres / redis / apiflow
+# 与应用编排（docker-compose.yml）独立启停、独立生命周期；
+# 本文件负责创建共享 network: home-toolkit-net
+#
+# 启动：docker compose -f docker-compose.infra.yml up -d
+# 停止：docker compose -f docker-compose.infra.yml down        （保留卷）
+#       docker compose -f docker-compose.infra.yml down -v     （连卷一起删）
+#
+# 镜像说明（重要）：
+#   本机离线环境已下载的镜像为 postgres:19-alpine、redis:8.10-alpine，
+#   以及 apiflow 的 server/web/mongo（v0.9.84 / mongo 6）。
+#   此处 tag 与本地实际镜像保持一致；未使用计划中的 postgres:18 与 redis 稳定版之外的其他版本。
+#   待网络恢复后如需升级，再统一调整。
+# ==========================================================
+
+services:
+  postgres:
+    image: postgres:19-alpine
+    container_name: home-toolkit-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 与 .env 中的 POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD 对应，
+      # 官方 postgres 镜像通过这三个变量完成首次初始化。
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: Asia/Shanghai
+    volumes:
+      # 注意：postgres 18+ 官方镜像把默认 PGDATA 改为 /var/lib/postgresql/<major>/docker，
+      # 且镜像声明的 VOLUME 是父目录 /var/lib/postgresql（本机 postgres:19-alpine 的 PGDATA
+      # 为 /var/lib/postgresql/19/docker）。因此命名卷必须挂到父目录，不能沿用旧版的
+      # /var/lib/postgresql/data，否则真实数据会写入镜像自带匿名卷，pgdata 卷形同虚设。
+      - pgdata:/var/lib/postgresql
+      # 首次初始化时执行，用于启用 pg_trgm（中文/模糊检索基础）
+      - ./docker/init/01_extensions.sql:/docker-entrypoint-initdb.d/01_extensions.sql:ro
+    ports:
+      # 仅绑定回环地址，避免家庭网络内暴露数据库
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - home-toolkit-net
+
+  redis:
+    # 8.10-alpine：本地已下载的稳定版镜像
+    image: redis:8.10-alpine
+    container_name: home-toolkit-redis
+    restart: unless-stopped
+    env_file:
+      - .env
+    # AOF 持久化 + 密码认证（密码来自 .env 的 REDIS_PASSWORD）
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      # $$ 转义：交给容器内的 shell 展开，读取 env_file 注入的 REDIS_PASSWORD
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - home-toolkit-net
+
+  # ---------------------------------------------------------------------------
+  # Apiflow（API 文档 / Mock 自托管）
+  # 镜像：apiflow-mongo:6 / apiflow-server:v0.9.84 / apiflow-web:v0.9.84
+  # 以下配置全部来自离线核对（docker inspect + 镜像内文件），未联网：
+  #   - server：监听 7001（dist/config/config.default.js），读取 MONGODB_URI
+  #             （默认 mongodb://localhost:27017/apiflow），上传目录固定为
+  #             /data/apiflow_upload，日志目录取自 LOG_DIR（默认相对 logs）
+  #   - web：nginx 监听 80，入口脚本按 DEPLOYMENT_TYPE 选择模板，未设置时使用
+  #          nginx.user.conf，其中 location /api/ 反代到 http://server:7001；
+  #          因此 server 容器在共享网络中必须能被解析为 “server”（下用 alias 实现）
+  #   - mongo：官方 mongo 6.0.28，监听 27017，无初始化脚本、默认无认证
+  # ---------------------------------------------------------------------------
+  apiflow-mongo:
+    image: xiaoxiaoshu/apiflow-mongo:6
+    container_name: home-toolkit-apiflow-mongo
+    restart: unless-stopped
+    # 无内置初始化脚本、未启用认证；数据目录随镜像默认（/data/db）
+    volumes:
+      - apiflow-mongo-data:/data/db
+    expose:
+      - "27017"
+    healthcheck:
+      # mongosh 为镜像内置（已在容器内确认存在）
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok' | grep -q 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - home-toolkit-net
+
+  apiflow-server:
+    image: xiaoxiaoshu/apiflow-server:v0.9.84
+    container_name: home-toolkit-apiflow-server
+    restart: unless-stopped
+    environment:
+      # 直连同网络内的 mongo 容器；库名与镜像默认值一致
+      MONGODB_URI: mongodb://apiflow-mongo:27017/apiflow
+      # 日志写进命名卷，避免容器重建后日志丢失
+      LOG_DIR: /app/logs
+      TZ: Asia/Shanghai
+    expose:
+      # 不映射到主机：本机 rootless docker 无法发布 7001，且 server 只应经
+      # apiflow-web 的 /api/ 反代访问（web 容器内解析 http://server:7001）
+      - "7001"
+    volumes:
+      # 镜像内上传目录为固定路径（config.default.js: uploadConfig.dir）
+      - apiflow-upload:/data/apiflow_upload
+      - apiflow-logs:/app/logs
+    depends_on:
+      apiflow-mongo:
+        condition: service_healthy
+    healthcheck:
+      # 无外部工具，使用内置 node 探测 7001 是否可建立 TCP 连接
+      test: ["CMD-SHELL", "node -e \"require('net').connect(7001,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      home-toolkit-net:
+        aliases:
+          # apiflow-web 的 nginx 反代目标固定为 http://server:7001
+          - server
+
+  apiflow-web:
+    image: xiaoxiaoshu/apiflow-web:v0.9.84
+    container_name: home-toolkit-apiflow-web
+    restart: unless-stopped
+    # 无需环境变量：未设置 DEPLOYMENT_TYPE 时入口脚本使用 nginx.user.conf
+    ports:
+      # 主机 8090（8080 已被应用 nginx 占用），仅绑回环
+      - "127.0.0.1:8090:80"
+    depends_on:
+      apiflow-server:
+        condition: service_healthy
+    healthcheck:
+      # 镜像内置 wget（已在容器内确认存在）
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - home-toolkit-net
+
+  apiflow-website:
+    # 官网容器：可选组件，如需对外展示文档入口再启用
+    image: xiaoxiaoshu/apiflow-website:v0.9.84
+    container_name: home-toolkit-apiflow-website
+    restart: "no"
+    profiles:
+      - website
+    healthcheck:
+      disable: true
+    networks:
+      - home-toolkit-net
+
+volumes:
+  pgdata:
+    name: home-toolkit-pgdata
+  redisdata:
+    name: home-toolkit-redisdata
+  apiflow-mongo-data:
+    name: home-toolkit-apiflow-mongo-data
+  apiflow-upload:
+    name: home-toolkit-apiflow-upload
+  apiflow-logs:
+    name: home-toolkit-apiflow-logs
+
+networks:
+  home-toolkit-net:
+    # 显式固定网络名，供应用编排以 external: true 引用
+    name: home-toolkit-net
+    driver: bridge
