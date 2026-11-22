@@ -20,11 +20,15 @@ from django.contrib import admin
 from django.urls import path
 from drf_spectacular.views import SpectacularAPIView
 
+from config.auth_views import LoginView, LogoutView, RefreshView
 from config.views import EchoView, health
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", health, name="health"),
+    path("api/auth/login/", LoginView.as_view(), name="auth-login"),
+    path("api/auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
+    path("api/auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("api/echo/", EchoView.as_view(), name="echo"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
 ]

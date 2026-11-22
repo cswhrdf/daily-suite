@@ -9,9 +9,11 @@ dependencies = [
     "django-environ~=0.14.0",
     "django-filter~=26.2",
     "djangorestframework~=3.18.3",
+    "djangorestframework-simplejwt~=5.5.1",
     "drf-spectacular~=0.30.0",
     "nh3~=0.3.8",
     "psycopg[binary]~=3.3.9",
+    "pyjwt~=2.15.1",
 ]
 
 [dependency-groups]
@@ -45,6 +47,10 @@ pythonpath = ["."]
 testpaths = ["tests"]
 # 覆盖率随测试一起跑，低于 100% 直接判失败。
 addopts = "-ra --cov=config --cov-fail-under=100"
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
 
 [tool.coverage.run]
 source = ["config"]

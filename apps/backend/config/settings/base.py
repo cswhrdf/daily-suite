@@ -4,6 +4,7 @@
 环境差异都由 ``dev.py`` / ``prod.py`` / ``test.py`` 负责。
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -39,6 +40,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # 第三方
     "rest_framework",
+    # 刷新令牌黑名单：登出、刷新轮换后旧令牌立即失效
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
 ]
@@ -173,6 +176,8 @@ MAILERS = {
 # ---------- Django REST Framework ----------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        # 前端 / 移动端走 JWT；SessionAuthentication 保留给 admin 与本地调试。
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -182,6 +187,36 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+
+# ---------- SimpleJWT ----------
+# Access Token 有效期较短，只由前端保存在内存；Refresh Token 生命周期较长，
+# 仅通过 httpOnly Cookie 在浏览器与后端之间往返。
+ACCESS_TOKEN_LIFETIME = timedelta(minutes=15)
+REFRESH_TOKEN_LIFETIME = timedelta(days=14)
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
+    "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
+    # 每次刷新都轮换 Refresh Token，并把旧令牌加入黑名单，降低被重放的风险。
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    # 登录时不在用户表上写 last_login（由业务层决定是否需要）。
+    "UPDATE_LAST_LOGIN": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    # ---------- Refresh Token Cookie ----------
+    # 以下非 simplejwt 内置语义的键由 config.auth_cookies 读取，
+    # 集中在此以免 Cookie 名称/属性散落在视图代码里。
+    "AUTH_COOKIE": "daily_suite_refresh",
+    # 只在认证端点路径上携带，避免每个 /api 请求都带 Refresh Cookie。
+    "AUTH_COOKIE_PATH": "/api/auth",
+    "AUTH_COOKIE_DOMAIN": None,
+    # 生产必须为 True；本地 http 联调在 dev.py 中按 DEBUG 关闭。
+    "AUTH_COOKIE_SECURE": True,
+    "AUTH_COOKIE_HTTP_ONLY": True,
+    "AUTH_COOKIE_SAMESITE": "Lax",
+    "AUTH_COOKIE_MAX_AGE": int(REFRESH_TOKEN_LIFETIME.total_seconds()),
 }
 
 

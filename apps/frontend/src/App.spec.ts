@@ -1,19 +1,29 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import App from './App.vue'
+import { setAccessToken } from './api/token'
 import vuetify from './plugins/vuetify'
 import router from './router'
 
+afterEach(() => {
+  setAccessToken(null)
+})
+
 describe('App', () => {
   it('渲染 Vuetify 布局并应用主题色', async () => {
+    // 首页为受保护路由：先激活 Pinia 并预置内存 Token，
+    // 避免守卫在 app.use(pinia) 之前触发，也避免真实刷新请求。
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    setAccessToken('test-access')
     await router.push('/')
     await router.isReady()
 
     const wrapper = mount(App, {
       global: {
-        plugins: [vuetify, createPinia(), router],
+        plugins: [vuetify, pinia, router],
       },
     })
     await flushPromises()
