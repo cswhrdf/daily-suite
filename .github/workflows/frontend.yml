@@ -1,0 +1,135 @@
+# =============================================================================
+# Frontend CI：Vue 3 + Vite（apps/web，用户级前端）
+#
+# 与本地脚本一一对应（均为 pnpm workspace 根目录执行）：
+#   pnpm install --frozen-lockfile   （根 pnpm-lock.yaml + pnpm-workspace.yaml）
+#     -> pnpm run lint      (pnpm -r -> eslint . --max-warnings 0)
+#     -> pnpm run lint:style(pnpm -r -> stylelint "src/**/*.{css,scss,vue}" --max-warnings 0)
+#     -> pnpm run typecheck (pnpm -r -> vue-tsc --noEmit)
+#     -> pnpm test          (pnpm -r -> vitest run)
+#     -> pnpm audit
+#
+# 约束：
+#   - 一律 --frozen-lockfile：锁文件漂移直接失败，避免 CI 悄悄升级依赖。
+#   - 锁文件固定在仓库根（pnpm workspace）；apps/web 下不再有子级 lock。
+#   - workflow 文件名与 name 保持 frontend.yml / "Frontend CI"：report.yml 按
+#     workflow 名与 artifact 名聚合，改名会断开 Allure 报告链路。
+#   - Node 26 为根 package.json engines 要求；pnpm 版本取根 packageManager 字段。
+#   - npm registry 偶发抖动，install 步骤带有限次数重试（不掩盖真实失败）。
+#   - 前端覆盖率阈值本阶段不做硬门禁（阶段 4 只搭了基础配置），
+#     待 Vitest coverage thresholds 定稿后再加 --coverage 门禁步骤。
+#   - Playwright E2E 本阶段尚未接入，workflow 中只留占位步骤与启用说明。
+# =============================================================================
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/frontend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: lint / typecheck / test / audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+
+    defaults:
+      run:
+        # pnpm workspace：安装与脚本都在仓库根执行，由根 scripts 递归到 apps/web。
+        working-directory: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # 与 package.json 的 packageManager 字段保持一致（pnpm@12.21.0）。
+          version: "12.21.0"
+          run_install: false
+
+      - name: "Setup Node（package.json engines 要求 node>=26）"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 安装依赖（锁文件校验，registry 抖动时重试 2 次）
+        run: |
+          attempts=0
+          until pnpm install --frozen-lockfile --reporter=append-only; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 3 ]; then
+              echo "pnpm install 连续 3 次失败，终止" >&2
+              exit 1
+            fi
+            echo "pnpm install 第 ${attempts} 次失败，10 秒后重试" >&2
+            sleep 10
+          done
+
+      - name: eslint
+        run: pnpm run lint
+
+      - name: stylelint
+        run: pnpm run lint:style
+
+      - name: typecheck（vue-tsc）
+        run: pnpm run typecheck
+
+      - name: vitest
+        run: pnpm test
+
+      # ---- Playwright E2E（占位，本阶段未接入）-------------------------------
+      # 启用前置条件：
+      #   1) 安装依赖：pnpm add -D @playwright/test allure-playwright
+      #   2) 新增 playwright.config.ts，reporter 配
+      #      [['allure-playwright', { outputFolder: 'allure-results' }]]
+      #   3) 按 PLAN 用 Prism 无头 Mock 起来源（pnpm dlx @stoplight/prism-cli ...）
+      #   4) 在仓库 Settings -> Variables 里新增仓库变量 ENABLE_E2E=true
+      #      （用仓库变量而不是写死 if: false，既默认跳过，也便于接好后一键打开）
+      - name: Playwright E2E（默认跳过，待启用）
+        if: ${{ vars.ENABLE_E2E == 'true' }}
+        run: pnpm exec playwright test
+
+      - name: pnpm audit（高危及以上阻断）
+        # 等价于 npm audit --audit-level=high；registry 抖动会报网络错误，
+        # 若确认是网络问题请重跑该步骤，不要靠降低阈值绕过。
+        run: pnpm audit --audit-level=high
+
+      - name: 上传 Allure 结果（前端，占位）
+        # Playwright 接入前该目录不存在，用 ignore 不判失败；
+        # 与后端 artifact 一起由 report.yml 聚合成单一 HTML 报告。
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-allure-results
+          path: apps/web/allure-results
+          if-no-files-found: ignore
+          retention-days: 14

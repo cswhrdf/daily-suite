@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "drf_spectacular",
+    # Celery 相关：beat 的周期任务与 worker 的任务结果都需要持久化到数据库，
+    # 前者由 django-celery-beat 提供 admin 可编辑的调度表，后者由 results 后端建表。
+    "django_celery_beat",
+    "django_celery_results",
 ]
 
 MIDDLEWARE = [
@@ -93,7 +97,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 # 开发与生产统一使用 PostgreSQL；优先 DATABASE_URL，否则用 POSTGRES_* 拼装。
 # 凭据类变量同样不写默认值，缺失即报错。
@@ -114,7 +118,7 @@ else:
 
 
 # Password validation
-# https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
+# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -141,7 +145,7 @@ PASSWORD_HASHERS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.1/topics/i18n/
+# https://docs.djangoproject.com/en/6.0/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
 
@@ -153,22 +157,62 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.1/howto/static-files/
+# https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
 
 
 # Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# https://docs.djangoproject.com/en/6.0/topics/email/#topic-email-configuration
 
-# 邮件后端默认用 SMTP（生产就绪）；本地需要打印邮件时可在 .env 里设置
+# 邮件暂不做：沿用传统 EMAIL_BACKEND（Django 6.1 引入的 MAILERS 新式配置暂不采用，
+# 待升回 Django 6.1 + django-celery-beat 2.10 时再一并迁移）。
+# 默认 SMTP 后端（生产就绪）；本地需要打印邮件时可在 .env 里设置
 # DJANGO_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend。
-MAILERS = {
+EMAIL_BACKEND = env(
+    "DJANGO_EMAIL_BACKEND",
+    default="django.core.mail.backends.smtp.EmailBackend",
+)
+
+
+# ---------- Celery / Redis ----------
+# REDIS_URL 是容器内 redis 服务的完整连接串（含密码），属于凭据类配置，
+# 与 POSTGRES_* 一样不提供默认值：缺失即抛 ImproperlyConfigured。
+REDIS_URL = env.str("REDIS_URL")
+# Broker 允许单独覆盖（例如临时指向独立实例），未设置时复用 REDIS_URL。
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default=REDIS_URL)
+
+# 任务结果写 PostgreSQL（依赖 django_celery_results 建表），便于在 admin 里按任务 ID
+# 排查；备选方案是复用 Redis（CELERY_RESULT_BACKEND = CELERY_BROKER_URL），
+# 但会与 Broker/缓存共用同一实例的键空间，清理与排障都更麻烦，故不采用。
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRES = int(timedelta(days=7).total_seconds())
+
+# beat 调度持久化在数据库（admin 可增删改），而非本地 celerybeat-schedule 文件；
+# 这样 beat 容器重建后周期任务不会丢失，多副本也不会各读一份文件。
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# worker 启动时若 Broker 尚未就绪则持续重试，避免与 infra 编排的启动顺序耦合。
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# 记录任务开始状态，便于在结果表中区分「排队中」与「执行中」。
+CELERY_TASK_TRACK_STARTED = True
+# 单任务硬超时，防止异常任务长期占用 worker。
+CELERY_TASK_TIME_LIMIT = 10 * 60
+
+
+# ---------- Cache ----------
+# 默认缓存使用 django-redis，连接串与 Broker 同源（本项目 Redis 即缓存/队列共用实例）。
+# Redis 不可用时缓存读写会直接报错而非静默降级，符合「配置错误要暴露」的原则。
+CACHES = {
     "default": {
-        "BACKEND": env(
-            "DJANGO_EMAIL_BACKEND",
-            default="django.core.mail.backends.smtp.EmailBackend",
-        ),
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": CELERY_BROKER_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        # 多环境共用同一 Redis 时隔离键空间，避免 dev/prod 缓存互相覆盖。
+        "KEY_PREFIX": "daily-suite",
     },
 }
 

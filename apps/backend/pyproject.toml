@@ -3,25 +3,43 @@ name = "backend"
 version = "0.1.0"
 description = "daily-suite 后端（Django + DRF）"
 requires-python = ">=3.12"
+
+# TODO(deps): 暂降到 Django 6.0 + django-celery-beat 2.9。
+# 起因：beat 2.1.0 与 Celery 5.7 的 zoneinfo 用法不兼容，且 Django 6.x 移除了
+# timezone.utc 支持，二者叠加导致 beat 启动即报错。
+# 待 django-celery-beat v2.10.0 发布并声明支持 Django 6.1 后，再单独评估升回
+# Django 6.1 + beat 2.10（含迁回 MAILERS 新式邮件配置），届时删除本注释。
+# 跟踪：https://github.com/celery/django-celery-beat/issues/1079
 dependencies = [
     "argon2-cffi~=25.1.0",
-    "django~=6.1.3",
+    "celery~=5.7.0",
+    "django~=6.0.10",
+    "django-celery-beat~=2.9.0",
+    "django-celery-results~=2.6.0",
     "django-environ~=0.14.0",
     "django-filter~=26.2",
+    "django-redis~=7.0.0",
     "djangorestframework~=3.18.3",
     "djangorestframework-simplejwt~=5.5.1",
     "drf-spectacular~=0.30.0",
+    "gunicorn~=27.0.1",
     "nh3~=0.3.8",
+    "packaging~=26.3",
+    "pillow~=13.0.0",
     "psycopg[binary]~=3.3.9",
     "pyjwt~=2.15.1",
+    "redis~=8.1.0",
+    "structlog~=26.1.0",
+    "uvicorn[standard]~=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
     "allure-pytest~=2.16.2",
     "deptry~=0.25.1",
-    "django-stubs~=6.1.2",
-    "djangorestframework-stubs~=3.18.2",
+    "django-stubs~=6.0.9",
+    # 3.18.2 起要求 django-stubs>=6.1.2，与 Django 6.0 降级方案冲突，故精确锁定 3.18.0。
+    "djangorestframework-stubs==3.18.0",
     "factory-boy~=3.3.3",
     "freezegun~=1.5.5",
     "mypy~=2.4.1",
@@ -40,6 +58,44 @@ ci = [
     "semgrep~=1.186.0",
 ]
 
+# ---------- deptry ----------
+# deptry 只做静态 import 扫描，看不到「通过命令行、Django settings 字符串路径或
+# 运行期配置间接加载」的依赖，这类会被误报成 DEP002（已声明但代码未使用）。
+# 因此按规则逐条登记忽略，并注明理由；新增真实冗余依赖仍会被报出。
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+    # ① 命令行工具：不由代码 import，只在容器入口/启动脚本中执行。
+    "gunicorn",  # 生产 WSGI 服务器，Dockerfile 的 CMD 调用
+    "uvicorn",  # 生产 ASGI 服务器，Dockerfile 的 CMD 调用（celery 已由 celery.py 显式 import，未被误报）
+    # ② 由 Django settings 的字符串路径间接加载，代码里没有对应 import 语句：
+    "django-celery-beat",  # INSTALLED_APPS 中注册，提供 admin 可编辑的周期任务表
+    "django-celery-results",  # INSTALLED_APPS 中注册，把任务结果持久化到数据库
+    "django-filter",  # INSTALLED_APPS + DRF DEFAULT_FILTER_BACKENDS 的字符串路径
+    "django-redis",  # CACHES BACKEND / CLIENT_CLASS 使用 "django_redis.*" 字符串
+    "psycopg",  # DATABASES ENGINE 为 "django.db.backends.postgresql"，驱动按名加载
+    "argon2-cffi",  # PASSWORD_HASHERS 指向 Argon2PasswordHasher，算法后端按名加载
+    "redis",  # CELERY_BROKER_URL / 缓存 LOCATION 的连接串驱动，由 celery 与 django-redis 在运行期使用
+    # ③ 当前尚未被 import 的预留依赖（功能落地后会被真实使用）：
+    "nh3",  # 富文本 HTML 白名单清洗，笔记模块接入时使用
+    "pillow",  # Django ImageField 依赖，富文本图片上传接入时使用
+    "structlog",  # 结构化日志，日志配置落地时使用
+    # ④ 仅在测试中使用：deptry 默认排除 tests/ 目录，所以看不到 `import jwt`。
+    #    PyJWT 的导入名是 jwt（tests/test_auth.py 直接用它校验 Access Token 签名），
+    #    同时它也是 rest_framework_simplejwt 的核心依赖，故保留在运行期依赖中。
+    "pyjwt",
+    # ⑤ 由第三方包在运行期间接 import，本项目代码不直接引用：
+    #    celery 的 broker 传输层 kombu.transport.redis 会 `from packaging.version import Version`，
+    #    kombu 5.7.0 未在自身元数据中声明该依赖，故必须由本项目显式声明，
+    #    否则 `uv sync --no-dev` 构建出的运行镜像会报 ModuleNotFoundError: No module named 'packaging'。
+    "packaging",
+]
+
+# bandit / semgrep 只存在于 ci 依赖组且从不被 import，deptry 无法自动推断其模块名，
+# 这里显式登记（模块名与包名一致），避免每次运行都打印 "Assuming ..." 提示。
+[tool.deptry.package_module_name_map]
+bandit = "bandit"
+semgrep = "semgrep"
+
 # ---------- pytest / coverage ----------
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
@@ -48,9 +104,9 @@ testpaths = ["tests"]
 # 覆盖率随测试一起跑，低于 100% 直接判失败。
 addopts = "-ra --cov=config --cov-fail-under=100"
 
-[[tool.uv.index]]
-url = "https://mirrors.aliyun.com/pypi/simple/"
-default = true
+# ---------- uv 包索引 ----------
+# 不显式声明 [[tool.uv.index]]：uv 默认即使用官方 PyPI（https://pypi.org/simple），
+# 保证 lock 中所有包都解析自官方源，避免使用镜像源带来的同步延迟与来源不一致。
 
 [tool.coverage.run]
 source = ["config"]
@@ -59,12 +115,15 @@ branch = true
 # 下列文件均为脚手架模板/运行时装配代码，不含可测业务逻辑，故排除：
 # - manage.py：Django 命令行入口，仅做环境变量与命令分发；
 # - config/asgi.py、config/wsgi.py：部署服务器装配的 ASGI/WSGI 入口，只是把 settings 挂载出去；
+# - config/celery.py：Celery 应用装配（读取 settings、自动发现任务），
+#   与 asgi/wsgi 同为入口文件，测试只要求被导入，逐行度量没有意义；
 # - config/settings/：整个 settings 包（base/dev/prod/test）是纯配置声明，
 #   不含业务逻辑，测试期间被导入即视为已覆盖，逐行度量没有意义。
 #   覆盖率以绝对路径匹配 omit 模式，故需用前导 "*/" 才能命中整包。
 omit = [
     "manage.py",
     "config/asgi.py",
+    "config/celery.py",
     "*/config/settings/*",
     "config/wsgi.py",
 ]
@@ -125,4 +184,9 @@ django_settings_module = "config.settings.test"
 
 [[tool.mypy.overrides]]
 module = ["environ", "environ.*"]
+ignore_missing_imports = true
+
+# celery 未随包发布 py.typed，strict 模式下按第三方无类型库处理。
+[[tool.mypy.overrides]]
+module = ["celery", "celery.*"]
 ignore_missing_imports = true

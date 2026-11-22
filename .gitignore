@@ -333,7 +333,11 @@ vite.config.ts.timestamp-*
 # ===== 项目自定义 =====
 # 构建产物（Vue/Vite 前端）
 dist/
+dist-ssr/
 build/
+
+# 本地覆盖文件（如 vite 的 *.local 配置）
+*.local
 
 # Allure 测试报告（前后端统一输出目录）
 allure-results/

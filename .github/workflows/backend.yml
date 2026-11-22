@@ -1,0 +1,148 @@
+# =============================================================================
+# Backend CI：Django + DRF（apps/backend）
+#
+# 与本地脚本一一对应（均在 apps/backend 下执行）：
+#   uv sync --locked --all-groups
+#     -> uv run ruff check .
+#     -> uv run mypy
+#     -> uv run pytest           （覆盖率 100% 门禁来自 pyproject.toml 的 addopts）
+#     -> uv run pip-audit        （导出 uv.lock 的 requirements 后按 OSV 审计）
+#
+# 关键约束（改动前请先读）：
+#   1) 覆盖率门禁不要写成裸 `pytest --cov`：pyproject 的 addopts 已含
+#      `--cov=config --cov-fail-under=100`；再传裸 `--cov` 会把度量范围扩大到
+#      整个运行环境（含 site-packages），既慢又会让 100% 门禁失真。
+#      这里只追加 `--alluredir`。
+#   2) config/settings/test.py 默认把数据库主机指向 127.0.0.1，所以 PG service
+#      必须发布 5432 端口（services 容器默认只在 docker 网络上，127.0.0.1 打不通）。
+#   3) base.py 里 DJANGO_SECRET_KEY / DJANGO_ALLOWED_HOSTS / DJANGO_CSRF_TRUSTED_ORIGINS /
+#      POSTGRES_* / REDIS_URL 都没有默认值，缺失即 ImproperlyConfigured。
+#      CI 中必须全部提供；凭据类用 Secrets（未配置时回落到仅用于 CI 的占位值，
+#      保证 fork PR 也能跑通，绝不复用真实环境凭据）。
+# =============================================================================
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/backend.yml"
+  workflow_dispatch:
+
+# 同一分支的新提交直接取消旧运行，省 runner 也不产生过期结论。
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: lint / typecheck / test / audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # 与开发/生产一致（PLAN 决策：统一 PostgreSQL），不用 SQLite 兜底。
+        image: postgres:19-alpine
+        env:
+          POSTGRES_DB: daily_suite_ci
+          POSTGRES_USER: daily_suite_ci
+          POSTGRES_PASSWORD: daily_suite_ci
+        # 测试 settings 默认连 127.0.0.1:5432，必须发布端口到宿主机。
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U daily_suite_ci -d daily_suite_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      # 需在仓库 Settings -> Secrets and variables -> Actions 配置；
+      # 未配置时回落到 CI 专用占位值（不涉及任何真实环境）。
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-only-placeholder-secret-key-not-for-production' }}
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "http://localhost,http://127.0.0.1"
+      POSTGRES_DB: daily_suite_ci
+      POSTGRES_USER: daily_suite_ci
+      POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD || 'daily_suite_ci' }}
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      # 单测不访问 Redis，但 base.py 在导入期就要求存在该配置，故给占位值。
+      REDIS_URL: redis://127.0.0.1:6379/0
+      # 让 pip/uv 输出更稳定，便于排查 CI 卡住的问题。
+      UV_LINK_MODE: copy
+
+    defaults:
+      run:
+        working-directory: apps/backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup uv（启用锁文件缓存）
+        uses: astral-sh/setup-uv@v6
+        with:
+          # 与 docker/backend.Dockerfile 中使用的 uv 版本保持一致。
+          version: "0.13.7"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "apps/backend/uv.lock"
+
+      - name: 安装依赖（含 dev + ci 组，锁文件校验）
+        run: uv sync --locked --all-groups
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      # 说明：ruff format --check 暂未接入门禁——当前有 1 个文件未按 format 输出，
+      # 属于业务代码改动范围，等格式化与业务改动一起提交后再开启该步骤。
+
+      - name: mypy（strict）
+        run: uv run mypy
+
+      - name: pytest（覆盖率 100% 门禁 + Allure 结果）
+        run: uv run pytest --alluredir=allure-results --clean-alluredir
+
+      - name: 上传 Allure 结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-allure-results
+          path: apps/backend/allure-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: 导出锁文件依赖清单（供审计）
+        run: uv export --locked --all-groups --no-hashes --no-emit-project -o requirements.ci.txt
+
+      - name: pip-audit（OSV 漏洞库）
+        # OSV 在 GitHub Actions 网络下稳定；需要私有漏洞库时改用其他 --vulnerability-service。
+        # --strict：任意已知漏洞（不分等级）都判失败，属最严格的“有洞即拦”策略；
+        # 若遇到无法修复的间接依赖，用 --ignore-vuln <ID> 显式豁免并在 PR 里写明原因。
+        run: uv run pip-audit --vulnerability-service osv --strict -r requirements.ci.txt
+
+      - name: bandit（ci 组，静态安全检查）
+        # 只扫应用代码目录，不扫 tests（测试里 assert/凭据字面量属正常写法）。
+        run: uv run bandit -r config -q --severity-level medium
+
+      # semgrep 也已在 ci 组中装好，但社区规则需要联网拉取 registry，
+      # 私有仓库可改为 --config .semgrep/ 本地规则后再启用：
+      #   uv run semgrep --config p/python --config p/django --error config
+
+      - name: deptry（依赖一致性硬门禁）
+        # deptry 依赖一致性检查：误报已通过 pyproject.toml 的
+        # [tool.deptry.per_rule_ignores] 收敛，作为硬门禁（失败即阻断）。
+        run: uv run deptry .

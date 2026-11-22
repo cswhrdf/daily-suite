@@ -26,6 +26,9 @@ from config.views import EchoView, health
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", health, name="health"),
+    # 容器编排 / 反向代理统一探活路径（nginx.conf 与 compose healthcheck 均指向 /healthz）。
+    # 刻意不带末尾斜杠：探针不会因 APPEND_SLASH 收到 301，nginx 的精确匹配也能直接命中。
+    path("healthz", health, name="healthz"),
     path("api/auth/login/", LoginView.as_view(), name="auth-login"),
     path("api/auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("api/auth/logout/", LogoutView.as_view(), name="auth-logout"),

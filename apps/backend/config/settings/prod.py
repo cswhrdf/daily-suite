@@ -37,3 +37,8 @@ SECURE_HSTS_PRELOAD = env.bool(  # noqa: F405
     "DJANGO_SECURE_HSTS_PRELOAD",
     default=False,
 )
+
+# 家庭场景刻意关闭 HSTS 子域覆盖与 preload（存在打印机/NAS 面板等 http 子域，
+# preload 对家庭域名零收益），因此 security.W005 / security.W021 属已知且接受的风险，
+# 显式沉默这两条检查，避免 check --deploy 的噪音。
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]

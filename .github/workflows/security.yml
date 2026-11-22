@@ -1,0 +1,115 @@
+# =============================================================================
+# 漏洞扫描（五件套中的 Trivy + gitleaks 部分）
+#
+# 五件套与落点：
+#   1) Dependabot            -> .github/dependabot.yml
+#   2) dependency-review     -> .github/workflows/dependency-review.yml
+#   3) pip-audit             -> .github/workflows/backend.yml
+#   4) pnpm audit            -> .github/workflows/frontend.yml
+#   5) Trivy + gitleaks      -> 本文件
+#
+# 为什么 Trivy 既扫源码也扫镜像：
+#   - fs 模式：扫仓库里的锁文件/配置（含 IaC 与 secret），不依赖镜像构建；
+#   - image 模式：扫实际运行时基础镜像的 OS 包漏洞，镜像 tag 与
+#     docker/backend.Dockerfile（python:3.12-slim-bookworm）和
+#     docker/web.Dockerfile（nginx:1.29-alpine）保持一致。
+#
+# 私有仓库没有 GHAS 时：
+#   - Trivy 的 SARIF 上传（GitHub Security 标签页）会失败，故默认不做 SARIF 上传，
+#     只以 exit-code=1 让流水线失败并打印表格定位问题；
+#   - secret 扫描用 gitleaks 社区版 CLI（docker 运行，无需 GITLEAKS_LICENSE）；
+#     若换成 gitleaks/gitleaks-action，组织仓库需要配置 GITLEAKS_LICENSE secret。
+# =============================================================================
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apps/**/pyproject.toml"
+      - "apps/**/uv.lock"
+      - "apps/**/package.json"
+      - "apps/**/pnpm-lock.yaml"
+      - "docker/**"
+      - ".github/workflows/security.yml"
+  schedule:
+    # 每周一 03:00 UTC 复查一次（依赖不变但漏洞库在更新）。
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # 有 GHAS 时再打开下面这行，供 Trivy 上传 SARIF 到 Security 标签页：
+  # security-events: write
+
+jobs:
+  trivy-fs:
+    name: Trivy 文件系统扫描
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Trivy fs（漏洞 / secret / IaC 配置）
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  trivy-image:
+    name: Trivy 镜像扫描（${{ matrix.image }}）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 与 Dockerfile 中的基础镜像 tag 一致；升级镜像时两处同步改。
+        image:
+          - python:3.12-slim-bookworm
+          - nginx:1.29-alpine
+    steps:
+      - name: Trivy image
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  gitleaks:
+    name: gitleaks（secret 扫描）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout（需要完整历史，才能扫到历史提交里的泄露）
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: gitleaks detect（含历史提交）
+        # 用官方 CLI 镜像而非 gitleaks/gitleaks-action：后者在组织仓库需要
+        # GITLEAKS_LICENSE，社区版 CLI 无此限制。
+        # 不传 --no-git，扫描完整 git 历史（因此上面 fetch-depth: 0 是必需的）。
+        # 真实密钥文件 .env 已被 .gitignore 排除，仓库里只有空的 .env.example。
+        # --redact 保证日志里不打印明文密钥。
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            detect --source=/repo --verbose --redact --exit-code 1
