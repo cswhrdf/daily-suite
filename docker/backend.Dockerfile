@@ -15,7 +15,7 @@
 
 ARG PYTHON_VERSION=3.12
 
-# ---------- 阶段 1：builder ----------
+# ---------- Stage 1：builder ----------
 FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
 
 # uv 官方静态镜像里的二进制（版本与仓库本地 uv 对齐），避免构建期再经 pip 下载 uv。
@@ -36,7 +36,7 @@ COPY apps/backend/ ./
 # 第二遍 sync 让项目本身（本仓库为虚拟项目）与源码就位，同时校验锁文件未漂移。
 RUN uv sync --locked --no-dev
 
-# ---------- 阶段 2：runtime ----------
+# ---------- Stage 2：runtime ----------
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

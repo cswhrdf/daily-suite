@@ -16,9 +16,9 @@
 #     workflow 名与 artifact 名聚合，改名会断开 Allure 报告链路。
 #   - Node 26 为根 package.json engines 要求；pnpm 版本取根 packageManager 字段。
 #   - npm registry 偶发抖动，install 步骤带有限次数重试（不掩盖真实失败）。
-#   - 前端覆盖率阈值本阶段不做硬门禁（阶段 4 只搭了基础配置），
+#   - 前端覆盖率阈值暂不做硬门禁（Vitest 基础配置已就绪），
 #     待 Vitest coverage thresholds 定稿后再加 --coverage 门禁步骤。
-#   - Playwright E2E 本阶段尚未接入，workflow 中只留占位步骤与启用说明。
+#   - Playwright E2E 尚未接入，workflow 中只留占位步骤与启用说明。
 # =============================================================================
 name: Frontend CI
 
@@ -106,12 +106,12 @@ jobs:
       - name: vitest
         run: pnpm test
 
-      # ---- Playwright E2E（占位，本阶段未接入）-------------------------------
+      # ---- Playwright E2E（占位，尚未接入）-----------------------------------
       # 启用前置条件：
       #   1) 安装依赖：pnpm add -D @playwright/test allure-playwright
       #   2) 新增 playwright.config.ts，reporter 配
       #      [['allure-playwright', { outputFolder: 'allure-results' }]]
-      #   3) 按 PLAN 用 Prism 无头 Mock 起来源（pnpm dlx @stoplight/prism-cli ...）
+      #   3) 用 Prism 无头 Mock 起来源（pnpm dlx @stoplight/prism-cli ...）
       #   4) 在仓库 Settings -> Variables 里新增仓库变量 ENABLE_E2E=true
       #      （用仓库变量而不是写死 if: false，既默认跳过，也便于接好后一键打开）
       - name: Playwright E2E（默认跳过，待启用）

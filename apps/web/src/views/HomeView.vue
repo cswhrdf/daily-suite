@@ -14,7 +14,7 @@ const features = [
         <v-card class="pa-6" elevation="4" rounded="lg">
           <v-card-title class="text-h5">Daily Suite 前端脚手架</v-card-title>
           <v-card-text>
-            <p class="mb-4">阶段 4 的基础工程已就绪，当前具备以下能力：</p>
+            <p class="mb-4">基础工程已就绪，当前具备以下能力：</p>
             <v-list density="compact">
               <v-list-item v-for="feature in features" :key="feature" :title="feature">
                 <template #prepend>

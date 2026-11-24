@@ -3,6 +3,8 @@
 # 与应用编排（docker-compose.yml）独立启停、独立生命周期；
 # 本文件负责创建共享 network: home-toolkit-net
 #
+# ⚠️ 本地开发专用：本文件仅为本地开发使用；实际部署将采用另一套独立配置。
+#
 # 启动：docker compose -f docker-compose.infra.yml up -d
 # 停止：docker compose -f docker-compose.infra.yml down        （保留卷）
 #       docker compose -f docker-compose.infra.yml down -v     （连卷一起删）
@@ -10,7 +12,7 @@
 # 镜像说明（重要）：
 #   本机离线环境已下载的镜像为 postgres:19-alpine、redis:8.10-alpine，
 #   以及 apiflow 的 server/web/mongo（v0.9.84 / mongo 6）。
-#   此处 tag 与本地实际镜像保持一致；未使用计划中的 postgres:18 与 redis 稳定版之外的其他版本。
+#   此处 tag 与本地实际镜像保持一致；未使用 postgres:18 与 redis 稳定版之外的其他版本。
 #   待网络恢复后如需升级，再统一调整。
 # ==========================================================
 

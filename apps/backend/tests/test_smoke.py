@@ -1,4 +1,4 @@
-"""脚手架阶段的冒烟测试：验证 Django 与 DRF 基本可用。"""
+"""脚手架冒烟测试：验证 Django 与 DRF 基本可用。"""
 
 from django.test import Client
 from django.urls import reverse

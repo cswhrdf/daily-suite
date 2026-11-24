@@ -1,4 +1,4 @@
-"""脚手架阶段的最小视图：健康检查与 DRF 冒烟接口。"""
+"""脚手架最小视图：健康检查与 DRF 冒烟接口。"""
 
 from django.http import HttpRequest, JsonResponse
 from drf_spectacular.utils import extend_schema

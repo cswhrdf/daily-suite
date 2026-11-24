@@ -50,7 +50,7 @@ jobs:
 
     services:
       postgres:
-        # 与开发/生产一致（PLAN 决策：统一 PostgreSQL），不用 SQLite 兜底。
+        # 与开发/生产一致（统一使用 PostgreSQL），不用 SQLite 兜底。
         image: postgres:19-alpine
         env:
           POSTGRES_DB: daily_suite_ci

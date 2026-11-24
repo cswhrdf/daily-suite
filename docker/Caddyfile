@@ -1,0 +1,39 @@
+# ==========================================================
+# Caddy：内网真实证书入口（由 compose 的 tls profile 启动）
+#
+# 职责边界：
+#   - 公网入口是 cloudflared 出站隧道（CF 边缘终止 TLS），与本文件无关；
+#   - 本文件只解决「内网直连同一域名也要有可信证书」的问题：
+#     浏览器访问 https://{$APP_DOMAIN} -> Caddy(8443/443) -> nginx:80 -> backend；
+#   - nginx 保持 listen 80 不变，真实协议由 nginx.conf 的 geo/map 依据
+#     X-Forwarded-Proto 判定，Caddy 反代时默认会带上该头，Django 侧无需改动。
+#
+# 环境变量（由 compose 的 environment 注入）：
+#   APP_DOMAIN    单域名，例如 app.example.com（必须已在 Cloudflare 托管 DNS）
+#   CF_API_TOKEN  Cloudflare API Token，权限 Zone.DNS Edit
+#
+# 为什么用 DNS-01 而不是 HTTP-01：
+#   HTTP-01 要求 Let's Encrypt 能从公网回连到本机 80 端口；家庭宽带通常无公网 IP
+#   或无法映射端口，只能靠 DNS-01 以 TXT 记录完成校验。
+#
+# 为什么不用通配符证书：
+#   家庭自用只有一个域名，单域名证书足够；通配符会要求更宽的 DNS 权限，
+#   且一旦泄露影响面是整棵子树，收益为零。
+#
+# 为什么不需要「续期后 reload nginx」：
+#   Caddy 自行管理证书生命周期，续期后自动热加载配置（无需重启），
+#   不存在其他方案里「证书文件同步 + nginx -s reload」的钩子链。
+# ==========================================================
+
+{$APP_DOMAIN} {
+	encode gzip
+	reverse_proxy nginx:80
+
+	# DNS-01 自动签发 + 自动续期（Let's Encrypt 证书有效期正在缩短：
+	# 2027-02 起默认 64 天、2028 年降至 45 天，必须依赖自动化）。
+	# dns.providers.cloudflare 不在官方镜像内，由 docker/caddy.Dockerfile
+	# 基于官方 builder 镜像编译进 home-toolkit-caddy:dev。
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+}
