@@ -20,7 +20,7 @@ daily-suite/
 │   └── web/                  # 用户级前端（pnpm workspace 成员）
 ├── docker/                   # backend.Dockerfile / web.Dockerfile / caddy.Dockerfile / nginx.conf / Caddyfile
 ├── .github/                  # CI workflows（backend / frontend / report / security）
-├── docker-compose.infra.yml  # 基础设施编排：postgres / redis / apiflow
+├── docker-compose.infra.yml  # 基础设施编排：postgres / redis
 ├── docker-compose.yml        # 应用编排：backend / celery / nginx + caddy / cloudflared（profile 控制）
 ├── pnpm-workspace.yaml       # pnpm workspace 清单（apps/*）
 ├── package.json / pnpm-lock.yaml

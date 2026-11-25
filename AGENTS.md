@@ -6,7 +6,7 @@
 
 - `apps/backend/`：Django 6.0 + DRF + simplejwt + Celery + PostgreSQL + Redis，由 **uv** 管理（`pyproject.toml` + `uv.lock`）。
 - `apps/web/`：Vue 3 + TypeScript + Vite + Vuetify + Pinia + Vue Router，由 **pnpm workspace** 管理（锁文件在仓库根）。
-- 部署：Docker Compose 双编排 —— `docker-compose.infra.yml`（postgres/redis/apiflow，创建 `home-toolkit-net`）与 `docker-compose.yml`（migrate/backend/celery-worker/celery-beat/nginx + caddy/cloudflared 两个 profile 服务）。两份 compose 当前仅作本地开发配置，实际部署用另一套配置。
+- 部署：Docker Compose 双编排 —— `docker-compose.infra.yml`（postgres/redis，创建 `home-toolkit-net`）与 `docker-compose.yml`（migrate/backend/celery-worker/celery-beat/nginx + caddy/cloudflared 两个 profile 服务）。两份 compose 当前仅作本地开发配置，实际部署用另一套配置。
 
 ## 常用命令
 
