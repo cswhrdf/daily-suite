@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import vuetify from 'vite-plugin-vuetify'
 
+// 联调真实后端：pnpm dev（默认 target http://127.0.0.1:8000）
+// 联调 Prism mock：pnpm run dev:mock（--mode mock，target http://127.0.0.1:4010）
+// 也可用 VITE_API_PROXY_TARGET 显式覆盖 target。
 export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
@@ -26,7 +29,9 @@ export default defineConfig(({ mode }) => ({
     // 开发期同源代理：浏览器只访问 Vite dev server，后端不需要 CORS。
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target:
+          process.env['VITE_API_PROXY_TARGET'] ??
+          (mode === 'mock' ? 'http://127.0.0.1:4010' : 'http://127.0.0.1:8000'),
         changeOrigin: true,
       },
     },

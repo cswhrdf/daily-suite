@@ -138,9 +138,11 @@ jobs:
         # 只扫应用代码目录，不扫 tests（测试里 assert/凭据字面量属正常写法）。
         run: uv run bandit -r config -q --severity-level medium
 
-      # semgrep 也已在 ci 组中装好，但社区规则需要联网拉取 registry，
-      # 私有仓库可改为 --config .semgrep/ 本地规则后再启用：
-      #   uv run semgrep --config p/python --config p/django --error config
+      # semgrep 刻意不装进 Python 依赖（其硬锁的 mcp 版本带已知漏洞，见
+      # apps/backend/pyproject.toml 中 ci 组的注释），需要时用官方镜像在容器里跑。
+      # 社区规则要联网拉 registry，私有仓库可改为挂载仓库内的 .semgrep/ 规则：
+      #   docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep \
+      #     semgrep --config p/python --config p/django --error config
 
       - name: deptry（依赖一致性硬门禁）
         # deptry 依赖一致性检查：误报已通过 pyproject.toml 的

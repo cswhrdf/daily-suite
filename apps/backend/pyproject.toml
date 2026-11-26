@@ -53,9 +53,15 @@ dev = [
 
 # 安全静态扫描工具组：仅 CI 使用，本地默认不装。
 # 本地开发者执行 uv sync 不会安装本组；CI 中用 uv sync --group ci 额外装入。
+#
+# semgrep 不进依赖组，改用官方容器镜像在 CI 中执行：
+# semgrep 1.186 / 1.187 都硬锁 mcp==1.29.0，而 mcp <1.30.0 命中 GHSA-qx49-fqc8-xw99
+# （MCP Python SDK 的 OAuth 客户端可能把凭据发给 MCP 服务器指定的授权服务器，high），
+# 会被 dependency-review 与 pip-audit 阻断。semgrep 在本项目只以命令行方式运行，
+# 把它整棵 Python 依赖树（mcp、opentelemetry、starlette 等）留在 uv.lock 里没有收益，
+# 故改为容器调用；待 semgrep 放开 mcp 版本约束后再评估装回。
 ci = [
     "bandit~=1.9.4",
-    "semgrep~=1.186.0",
 ]
 
 # ---------- deptry ----------
@@ -90,11 +96,10 @@ DEP002 = [
     "packaging",
 ]
 
-# bandit / semgrep 只存在于 ci 依赖组且从不被 import，deptry 无法自动推断其模块名，
+# bandit 只存在于 ci 依赖组且从不被 import，deptry 无法自动推断其模块名，
 # 这里显式登记（模块名与包名一致），避免每次运行都打印 "Assuming ..." 提示。
 [tool.deptry.package_module_name_map]
 bandit = "bandit"
-semgrep = "semgrep"
 
 # ---------- pytest / coverage ----------
 [tool.pytest.ini_options]

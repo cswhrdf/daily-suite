@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Daily Suite API
+  version: 0.1.0
+  description: Daily Suite 后端 API 规范。
+paths:
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: 校验用户名密码，成功时返回 Access Token 并下发 Refresh Cookie。
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: 把 Cookie 中的 Refresh Token 加入黑名单，并清除 Cookie。
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '204':
+          description: 已登出，Cookie 已清除
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: 校验并轮换 Refresh Token，返回新的 Access Token。
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+          description: ''
+  /api/echo/:
+    post:
+      operationId: echo_create
+      description: 校验传入的 ``message`` 字段并原样回显。
+      tags:
+      - echo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Echo'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Echo'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Echo'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Echo'
+          description: ''
+components:
+  schemas:
+    AccessToken:
+      type: object
+      description: 只返回 Access Token；Refresh Token 走 httpOnly Cookie。
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    Echo:
+      type: object
+      description: 回显输入内容，用于验证 DRF 序列化器往返。
+      properties:
+        message:
+          type: string
+          maxLength: 200
+      required:
+      - message
+    Login:
+      type: object
+      description: 登录请求体：用户名 + 密码。
+      properties:
+        username:
+          type: string
+          maxLength: 150
+        password:
+          type: string
+          maxLength: 128
+      required:
+      - password
+      - username
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

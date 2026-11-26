@@ -6,3 +6,6 @@ packages:
 # 下载对应平台的预编译二进制，否则 Vite 启动时报找不到 watcher。
 allowBuilds:
   '@parcel/watcher': true
+  # @scarf/scarf 只是匿名安装统计（由 @stoplight/prism-cli 传递引入），
+  # 与功能无关，显式拒绝执行其安装脚本，避免触发不必要的网络上报。
+  '@scarf/scarf': false
