@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RouteLocationNormalized } from 'vue-router'
 
 import { setAccessToken } from '@/api/token'
-import { authGuard } from './guard'
+import { authGuard } from '@/router/guard'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),

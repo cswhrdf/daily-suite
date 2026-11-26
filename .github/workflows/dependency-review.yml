@@ -45,3 +45,5 @@ jobs:
           fail-on-severity: high
           # 仅在有阻断项时在 PR 里留一条摘要评论，避免噪音。
           comment-summary-in-pr: on-failure
+          # 读取仓库内豁免配置，只放行已核实不可利用的特定 GHSA。
+          config-file: .github/dependency-review-config.yml

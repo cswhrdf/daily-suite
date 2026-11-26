@@ -18,7 +18,12 @@
 #   - npm registry 偶发抖动，install 步骤带有限次数重试（不掩盖真实失败）。
 #   - 前端覆盖率阈值暂不做硬门禁（Vitest 基础配置已就绪），
 #     待 Vitest coverage thresholds 定稿后再加 --coverage 门禁步骤。
-#   - Playwright E2E 尚未接入，workflow 中只留占位步骤与启用说明。
+#   - Allure：vitest（allure-vitest/reporter）与 Playwright E2E
+#     （allure-playwright）都写入 apps/web/allure-results，统一上传为
+#     frontend-allure-results，由 report.yml 与后端结果合并生成报告。
+#   - Playwright E2E 默认跳过（仓库变量 ENABLE_E2E=true 时启用）：
+#     启用后需先安装 chromium（playwright install --with-deps），
+#     浏览器下载走 npmmirror 镜像（PLAYWRIGHT_DOWNLOAD_HOST）。
 # =============================================================================
 name: Frontend CI
 
@@ -106,30 +111,34 @@ jobs:
       - name: vitest
         run: pnpm test
 
-      # ---- Playwright E2E（占位，尚未接入）-----------------------------------
-      # 启用前置条件：
-      #   1) 安装依赖：pnpm add -D @playwright/test allure-playwright
-      #   2) 新增 playwright.config.ts，reporter 配
-      #      [['allure-playwright', { outputFolder: 'allure-results' }]]
-      #   3) 用 Prism 无头 Mock 起来源（pnpm dlx @stoplight/prism-cli ...）
-      #   4) 在仓库 Settings -> Variables 里新增仓库变量 ENABLE_E2E=true
-      #      （用仓库变量而不是写死 if: false，既默认跳过，也便于接好后一键打开）
-      - name: Playwright E2E（默认跳过，待启用）
+      # ---- Playwright E2E（通过仓库变量 ENABLE_E2E 开关控制，默认跳过）--------
+      # 启用方式：Settings -> Variables 新增 ENABLE_E2E=true。
+      # 用例与配置：apps/web/playwright.config.ts、apps/web/e2e/*.spec.ts；
+      # 结果写入 apps/web/allure-results（与 vitest 同目录，一并上传）。
+      - name: 安装 Playwright 浏览器（chromium，镜像加速）
         if: ${{ vars.ENABLE_E2E == 'true' }}
-        run: pnpm exec playwright test
+        env:
+          # 官方 CDN 在国内网络常超时，改用 npmmirror 的 playwright 镜像。
+          PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.npmmirror.com/binaries/playwright
+        run: pnpm --filter @daily-suite/web exec playwright install --with-deps chromium
+
+      - name: Playwright E2E
+        if: ${{ vars.ENABLE_E2E == 'true' }}
+        run: pnpm --filter @daily-suite/web run e2e
 
       - name: pnpm audit（高危及以上阻断）
         # 等价于 npm audit --audit-level=high；registry 抖动会报网络错误，
         # 若确认是网络问题请重跑该步骤，不要靠降低阈值绕过。
         run: pnpm audit --audit-level=high
 
-      - name: 上传 Allure 结果（前端，占位）
-        # Playwright 接入前该目录不存在，用 ignore 不判失败；
+      - name: 上传 Allure 结果（前端：vitest + E2E）
+        # vitest 必然产出结果；E2E 开启时追加写入同一目录。
         # 与后端 artifact 一起由 report.yml 聚合成单一 HTML 报告。
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: frontend-allure-results
+          # 同时覆盖 apps/web/allure-results 下的 vitest 与 playwright 结果。
           path: apps/web/allure-results
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 14

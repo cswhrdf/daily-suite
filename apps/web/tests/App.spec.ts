@@ -2,10 +2,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import App from './App.vue'
-import { setAccessToken } from './api/token'
-import vuetify from './plugins/vuetify'
-import router from './router'
+import App from '@/App.vue'
+import { setAccessToken } from '@/api/token'
+import vuetify from '@/plugins/vuetify'
+import router from '@/router'
 
 afterEach(() => {
   setAccessToken(null)

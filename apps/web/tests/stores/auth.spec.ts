@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useAuthStore } from './auth'
 import { getAccessToken, setAccessToken } from '@/api/token'
+import { useAuthStore } from '@/stores/auth'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),

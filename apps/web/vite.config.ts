@@ -38,7 +38,11 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.spec.ts'],
+    include: ['tests/**/*.spec.ts'],
+    // Allure 结果写入 apps/web/allure-results（相对 package 目录），
+    // CI 中作为 artifact 上传，与 Playwright E2E 结果合并后由 report.yml 生成报告。
+    // reporter 会自动注册 allure-vitest/setup，无需再配 setupFiles。
+    reporters: ['default', ['allure-vitest/reporter', { resultsDir: 'allure-results' }]],
     // Vuetify 的组件入口直接 import .css，需交给 Vite 转换而不是 Node 直接加载。
     server: {
       deps: {
@@ -49,7 +53,7 @@ export default defineConfig(({ mode }) => ({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/api/schema.d.ts', 'src/main.ts', 'src/**/*.spec.ts'],
+      exclude: ['src/api/schema.d.ts', 'src/main.ts'],
     },
   },
 }))

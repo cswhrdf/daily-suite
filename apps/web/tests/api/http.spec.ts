@@ -1,8 +1,8 @@
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import http, { refreshHttp, setUnauthorizedHandler } from './http'
-import { getAccessToken, setAccessToken } from './token'
+import http, { refreshHttp, setUnauthorizedHandler } from '@/api/http'
+import { getAccessToken, setAccessToken } from '@/api/token'
 
 function okResponse<T>(data: T, config: InternalAxiosRequestConfig): AxiosResponse<T> {
   return { data, status: 200, statusText: 'OK', headers: {}, config }

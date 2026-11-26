@@ -9,8 +9,9 @@
 #
 # 说明：
 #   - 用 workflow_run 触发，避免在 backend/frontend 两个 workflow 之间互相依赖。
-#   - 用 dawidd6/action-download-artifact 按 workflow 文件名取最近一次成功运行，
-#     单个上游缺失（例如只改了前端）不会让聚合失败，只会在报告里少一部分结果。
+#   - 用 dawidd6/action-download-artifact 按 workflow 文件名取最近一次运行（无论成败），
+#     失败用例的结果也会进报告；单个上游缺失（例如只改了前端）不会让聚合失败，
+#     只会在报告里少一部分结果。
 #   - Allure 3 的结果文件以 UUID 命名，两份 results 直接混到一个目录即可合并。
 # =============================================================================
 name: Allure Report
@@ -54,7 +55,9 @@ jobs:
         uses: dawidd6/action-download-artifact@v28
         with:
           workflow: backend.yml
-          workflow_conclusion: success
+          # completed = 最近一次已结束的运行，不限 conclusion（failure 也会取），
+          # 不写这一行会回落成 action 默认值 success，失败的运行又会被跳过。
+          workflow_conclusion: completed
           name: backend-allure-results
           path: raw/backend
           if_no_artifact_found: warn
@@ -64,7 +67,8 @@ jobs:
         uses: dawidd6/action-download-artifact@v28
         with:
           workflow: frontend.yml
-          workflow_conclusion: success
+          # 同上：取最近一次已结束的运行，失败用例的结果也要进报告。
+          workflow_conclusion: completed
           name: frontend-allure-results
           path: raw/frontend
           if_no_artifact_found: warn

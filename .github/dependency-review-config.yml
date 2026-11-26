@@ -1,0 +1,9 @@
+# Dependency Review 豁免配置
+#
+# 豁免 GHSA-qxc2-j82w-r537（@faker-js/faker helpers.fake）：
+# faker 5.5.3 不存在 helpers.fake 这个 API（漏洞 sink 不可达），
+# postman-collection 仅用它生成 {{$randomCity}} 等动态变量，不调用 helpers.fake；
+# 且 @stoplight/prism-cli 是 devDependency、不进生产构建，无法升级修复
+# （升到 >=10.5.0 会因移除 CJS/locale 入口与旧 API 导致 Prism 启动崩溃）。
+allow-ghsas:
+  - GHSA-qxc2-j82w-r537

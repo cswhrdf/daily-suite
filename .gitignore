@@ -343,6 +343,10 @@ build/
 allure-results/
 allure-report/
 
+# Playwright 测试产物
+test-results/
+playwright-report/
+
 # 环境与密钥（关键）：只提交无密钥的 .env.example
 .env
 .env.*
