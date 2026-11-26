@@ -40,18 +40,18 @@ jobs:
 
     steps:
       - name: Checkout（仅用于拿到仓库元信息）
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup Node（Allure 3 是 Node 运行时）
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "26"
 
       - name: 下载后端 allure-results
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@v28
         with:
           workflow: backend.yml
           workflow_conclusion: success
@@ -61,7 +61,7 @@ jobs:
 
       - name: 下载前端 allure-results
         continue-on-error: true
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@v28
         with:
           workflow: frontend.yml
           workflow_conclusion: success
@@ -92,7 +92,7 @@ jobs:
         run: npx --yes allure@3 generate merged --output allure-report
 
       - name: 上传聚合报告
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: allure-report
           # 报告是静态站点：下载后解压，用任意静态服务器打开 index.html

@@ -9,7 +9,7 @@
 | `workflows/backend.yml` | 后端：`uv sync --locked --all-groups` → `ruff check` → `mypy` → `pytest`（100% 覆盖门禁）→ `pip-audit` → `bandit` → `deptry`（信息性） |
 | `workflows/frontend.yml` | 前端（apps/web）：在 pnpm workspace 根执行 `pnpm install --frozen-lockfile` → `lint` → `lint:style` → `typecheck` → `test` → `pnpm audit`，Playwright 为占位步骤 |
 | `workflows/report.yml` | 下载前后端 `allure-results` → 合并 → Allure 3（npm 包 `allure`）生成单一 HTML 报告并上传 artifact `allure-report` |
-| `workflows/security.yml` | Trivy（fs + `python:3.12-slim-bookworm` / `nginx:1.29-alpine` 镜像）与 gitleaks（含历史提交） |
+| `workflows/security.yml` | Trivy（fs + `python:3.12-slim-bookworm` / `nginx:1.30-alpine` 镜像）与 gitleaks（含历史提交） |
 | `workflows/dependency-review.yml` | PR 级依赖变更审查，高危阻断（私有仓库需 GHAS） |
 | `dependabot.yml` | uv（`/apps/backend`）、npm（`/`，pnpm workspace 根）、github-actions（`/`）周更 |
 

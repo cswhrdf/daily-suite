@@ -12,7 +12,7 @@
 #   - fs 模式：扫仓库里的锁文件/配置（含 IaC 与 secret），不依赖镜像构建；
 #   - image 模式：扫实际运行时基础镜像的 OS 包漏洞，镜像 tag 与
 #     docker/backend.Dockerfile（python:3.12-slim-bookworm）和
-#     docker/web.Dockerfile（nginx:1.29-alpine）保持一致。
+#     docker/web.Dockerfile（nginx:1.30-alpine）保持一致。
 #
 # 私有仓库没有 GHAS 时：
 #   - Trivy 的 SARIF 上传（GitHub Security 标签页）会失败，故默认不做 SARIF 上传，
@@ -54,7 +54,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -79,7 +79,7 @@ jobs:
         # 与 Dockerfile 中的基础镜像 tag 一致；升级镜像时两处同步改。
         image:
           - python:3.12-slim-bookworm
-          - nginx:1.29-alpine
+          - nginx:1.30-alpine
     steps:
       - name: Trivy image
         uses: aquasecurity/trivy-action@master
@@ -97,7 +97,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout（需要完整历史，才能扫到历史提交里的泄露）
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
