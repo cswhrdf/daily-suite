@@ -1,0 +1,92 @@
+# ==========================================================
+# 基础设施编排：postgres / redis
+# 与应用编排（docker-compose.yml）独立启停、独立生命周期；
+# 本文件负责创建共享 network: home-toolkit-net
+#
+# ⚠️ 本地开发专用：本文件仅为本地开发使用；实际部署将采用另一套独立配置。
+#
+# 启动：docker compose -f docker-compose.infra.yml up -d
+# 停止：docker compose -f docker-compose.infra.yml down        （保留卷）
+#       docker compose -f docker-compose.infra.yml down -v     （连卷一起删）
+#
+# 镜像说明（重要）：
+#   本机离线环境已下载的镜像为 postgres:19-alpine、redis:8.10-alpine。
+#   此处 tag 与本地实际镜像保持一致；未使用 postgres:18 与 redis 稳定版之外的其他版本。
+#   待网络恢复后如需升级，再统一调整。
+# ==========================================================
+
+services:
+  postgres:
+    image: postgres:19-alpine
+    container_name: home-toolkit-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 与 .env 中的 POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD 对应，
+      # 官方 postgres 镜像通过这三个变量完成首次初始化。
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: Asia/Shanghai
+    volumes:
+      # 注意：postgres 18+ 官方镜像把默认 PGDATA 改为 /var/lib/postgresql/<major>/docker，
+      # 且镜像声明的 VOLUME 是父目录 /var/lib/postgresql（本机 postgres:19-alpine 的 PGDATA
+      # 为 /var/lib/postgresql/19/docker）。因此命名卷必须挂到父目录，不能沿用旧版的
+      # /var/lib/postgresql/data，否则真实数据会写入镜像自带匿名卷，pgdata 卷形同虚设。
+      - pgdata:/var/lib/postgresql
+      # 首次初始化时执行，用于启用 pg_trgm（中文/模糊检索基础）
+      - ./docker/init/01_extensions.sql:/docker-entrypoint-initdb.d/01_extensions.sql:ro
+    ports:
+      # 仅绑定回环地址，避免家庭网络内暴露数据库
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - home-toolkit-net
+
+  redis:
+    # 8.10-alpine：本地已下载的稳定版镜像
+    image: redis:8.10-alpine
+    container_name: home-toolkit-redis
+    restart: unless-stopped
+    env_file:
+      - .env
+    # AOF 持久化 + 密码认证（密码来自 .env 的 REDIS_PASSWORD）
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      # $$ 转义：交给容器内的 shell 展开，读取 env_file 注入的 REDIS_PASSWORD
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - home-toolkit-net
+
+volumes:
+  pgdata:
+    name: home-toolkit-pgdata
+  redisdata:
+    name: home-toolkit-redisdata
+
+networks:
+  home-toolkit-net:
+    # 显式固定网络名，供应用编排以 external: true 引用
+    name: home-toolkit-net
+    driver: bridge

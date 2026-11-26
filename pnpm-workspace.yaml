@@ -1,0 +1,22 @@
+packages:
+  - "apps/*"
+
+# pnpm 12 构建脚本白名单（workspace 级）。
+# @parcel/watcher 由 vite / vite-plugin-vuetify 传递依赖引入，需要执行安装脚本
+# 下载对应平台的预编译二进制，否则 Vite 启动时报找不到 watcher。
+allowBuilds:
+  '@parcel/watcher': true
+  # @scarf/scarf 只是匿名安装统计（由 @stoplight/prism-cli 传递引入），
+  # 与功能无关，显式拒绝执行其安装脚本，避免触发不必要的网络上报。
+  '@scarf/scarf': false
+
+overrides:
+  # postman-collection@4.5.0 精确锁 lodash@4.17.21（GHSA-r5fr-rjxr-66jc 高危）；
+  # Prism 仅用其 Collection 数据模型，补丁级升到 4.18.1 已验证兼容。
+  "postman-collection>lodash": 4.18.1
+
+auditConfig:
+  # faker 5.5.3 无 helpers.fake（该漏洞 API 不存在），postman-collection/Prism 均不调用；
+  # 升到 >=10.5.0 会因 faker 10 移除 CJS/locale 入口与旧 API 导致 prism 启动崩溃，故豁免。
+  ignoreGhsas:
+    - GHSA-qxc2-j82w-r537

@@ -1,0 +1,49 @@
+# =============================================================================
+# Dependency Review（五件套之一）
+#
+# 在 PR 上对比 base/head 的依赖清单，命中已知漏洞的高危依赖直接阻断合入。
+# 与 pip-audit / pnpm audit 的分工：
+#   - 本 workflow 只看“本次 PR 新引入/升级了什么”，用于卡住引入漏洞的改动；
+#   - pip-audit / pnpm audit 看“当前锁文件整体是否有漏洞”，用于持续扫描存量。
+#
+# 权限说明：
+#   - 公开仓库可直接用；
+#   - 私有仓库需要 GitHub Advanced Security（GHAS）才允许使用该 action。
+#     没有 GHAS 时，本 workflow 会失败于 action 调用处，可删除本文件，
+#     改用 security.yml 中的 Trivy + pip-audit/pnpm audit 承担同样的把关。
+# =============================================================================
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # action 需要在 PR 里发评论时使用；只读足够时也可删掉这一行。
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    name: 依赖变更审查
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          # 高危及以上阻断；如需更严格可改为 moderate。
+          fail-on-severity: high
+          # 仅在有阻断项时在 PR 里留一条摘要评论，避免噪音。
+          comment-summary-in-pr: on-failure
+          # 读取仓库内豁免配置，只放行已核实不可利用的特定 GHSA。
+          config-file: .github/dependency-review-config.yml

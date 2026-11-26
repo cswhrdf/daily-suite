@@ -1,0 +1,25 @@
+{
+  "name": "daily-suite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Daily Suite monorepo：pnpm workspace 统一管理 web（apps/web），后端 apps/backend 由 uv 独立管理（uv --directory apps/backend run ...），不在 pnpm scripts 内。",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @daily-suite/web dev",
+    "dev:mock": "pnpm --filter @daily-suite/web dev:mock",
+    "mock": "pnpm --filter @daily-suite/web mock",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "lint:style": "pnpm -r lint:style",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test:coverage",
+    "e2e": "pnpm --filter @daily-suite/web e2e",
+    "gen:api": "pnpm --filter @daily-suite/web gen:api",
+    "format": "pnpm -r format",
+    "format:check": "pnpm -r format:check"
+  }
+}

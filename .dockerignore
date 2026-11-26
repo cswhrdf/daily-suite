@@ -1,0 +1,35 @@
+# =============================================================================
+# Docker 构建上下文忽略规则（仓库根作为两个镜像的 build context）
+# 目标：只把构建所需文件送进 daemon，避免 .env、依赖目录与构建产物外泄/拖慢构建。
+# =============================================================================
+
+# ---------- 版本控制 / 本地环境 ----------
+.git
+.gitignore
+.vscode
+.env
+.env.*
+!.env.example
+
+# ---------- Python ----------
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/.coverage
+**/htmlcov
+**/allure-results
+
+# ---------- Node ----------
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+
+# ---------- 计划与说明文档（镜像运行不需要） ----------
+PLAN
+PLAN*.md
+README.md
+docker-compose*.yml

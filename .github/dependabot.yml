@@ -1,0 +1,68 @@
+# =============================================================================
+# Dependabot 依赖更新策略（五件套之一）
+#
+# 覆盖三个依赖源：
+#   - uv  : apps/backend（pyproject.toml + uv.lock，Dependabot 原生支持 uv 生态）
+#   - npm : 仓库根（pnpm workspace：根 package.json + pnpm-lock.yaml，覆盖 apps/web；
+#           pnpm 锁文件由 npm 生态处理）
+#   - github-actions : 仓库根，保证 workflow 里引用的 action 版本持续跟进
+#
+# 策略：
+#   - 每周一次，集中在周一，便于一次性评审；
+#   - patch/minor 合并成一个 PR（减少 PR 噪音），major 单独开 PR 强制人工评估；
+#   - open-pull-requests-limit 设小，避免依赖更新淹没业务 PR。
+# =============================================================================
+version: 2
+updates:
+  # ---------- 后端：uv ----------
+  - package-ecosystem: "uv"
+    directory: "/apps/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    commit-message:
+      # 带 scope 便于在 PR 列表里区分前后端与 CI 依赖。
+      prefix: "chore(backend)"
+    groups:
+      backend-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ---------- 前端：npm（pnpm workspace 根，锁文件同样走 npm 生态） ----------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(web)"
+    groups:
+      web-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # vue-tsc 与 typescript 版本强绑定，跨 major 升级需人工验证后再放开。
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # ---------- CI：GitHub Actions ----------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

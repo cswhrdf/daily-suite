@@ -1,0 +1,144 @@
+# =============================================================================
+# Frontend CI：Vue 3 + Vite（apps/web，用户级前端）
+#
+# 与本地脚本一一对应（均为 pnpm workspace 根目录执行）：
+#   pnpm install --frozen-lockfile   （根 pnpm-lock.yaml + pnpm-workspace.yaml）
+#     -> pnpm run lint      (pnpm -r -> eslint . --max-warnings 0)
+#     -> pnpm run lint:style(pnpm -r -> stylelint "src/**/*.{css,scss,vue}" --max-warnings 0)
+#     -> pnpm run typecheck (pnpm -r -> vue-tsc --noEmit)
+#     -> pnpm test          (pnpm -r -> vitest run)
+#     -> pnpm audit
+#
+# 约束：
+#   - 一律 --frozen-lockfile：锁文件漂移直接失败，避免 CI 悄悄升级依赖。
+#   - 锁文件固定在仓库根（pnpm workspace）；apps/web 下不再有子级 lock。
+#   - workflow 文件名与 name 保持 frontend.yml / "Frontend CI"：report.yml 按
+#     workflow 名与 artifact 名聚合，改名会断开 Allure 报告链路。
+#   - Node 26 为根 package.json engines 要求；pnpm 版本取根 packageManager 字段。
+#   - npm registry 偶发抖动，install 步骤带有限次数重试（不掩盖真实失败）。
+#   - 前端覆盖率阈值暂不做硬门禁（Vitest 基础配置已就绪），
+#     待 Vitest coverage thresholds 定稿后再加 --coverage 门禁步骤。
+#   - Allure：vitest（allure-vitest/reporter）与 Playwright E2E
+#     （allure-playwright）都写入 apps/web/allure-results，统一上传为
+#     frontend-allure-results，由 report.yml 与后端结果合并生成报告。
+#   - Playwright E2E 默认跳过（仓库变量 ENABLE_E2E=true 时启用）：
+#     启用后需先安装 chromium（playwright install --with-deps），
+#     浏览器下载走 npmmirror 镜像（PLAYWRIGHT_DOWNLOAD_HOST）。
+# =============================================================================
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/frontend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: lint / typecheck / test / audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+
+    defaults:
+      run:
+        # pnpm workspace：安装与脚本都在仓库根执行，由根 scripts 递归到 apps/web。
+        working-directory: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          # 与 package.json 的 packageManager 字段保持一致（pnpm@12.21.0）。
+          version: "12.21.0"
+          run_install: false
+
+      - name: "Setup Node（package.json engines 要求 node>=26）"
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 安装依赖（锁文件校验，registry 抖动时重试 2 次）
+        run: |
+          attempts=0
+          until pnpm install --frozen-lockfile --reporter=append-only; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 3 ]; then
+              echo "pnpm install 连续 3 次失败，终止" >&2
+              exit 1
+            fi
+            echo "pnpm install 第 ${attempts} 次失败，10 秒后重试" >&2
+            sleep 10
+          done
+
+      - name: eslint
+        run: pnpm run lint
+
+      - name: stylelint
+        run: pnpm run lint:style
+
+      - name: typecheck（vue-tsc）
+        run: pnpm run typecheck
+
+      - name: vitest
+        run: pnpm test
+
+      # ---- Playwright E2E（通过仓库变量 ENABLE_E2E 开关控制，默认跳过）--------
+      # 启用方式：Settings -> Variables 新增 ENABLE_E2E=true。
+      # 用例与配置：apps/web/playwright.config.ts、apps/web/e2e/*.spec.ts；
+      # 结果写入 apps/web/allure-results（与 vitest 同目录，一并上传）。
+      - name: 安装 Playwright 浏览器（chromium，镜像加速）
+        if: ${{ vars.ENABLE_E2E == 'true' }}
+        env:
+          # 官方 CDN 在国内网络常超时，改用 npmmirror 的 playwright 镜像。
+          PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.npmmirror.com/binaries/playwright
+        run: pnpm --filter @daily-suite/web exec playwright install --with-deps chromium
+
+      - name: Playwright E2E
+        if: ${{ vars.ENABLE_E2E == 'true' }}
+        run: pnpm --filter @daily-suite/web run e2e
+
+      - name: pnpm audit（高危及以上阻断）
+        # 等价于 npm audit --audit-level=high；registry 抖动会报网络错误，
+        # 若确认是网络问题请重跑该步骤，不要靠降低阈值绕过。
+        run: pnpm audit --audit-level=high
+
+      - name: 上传 Allure 结果（前端：vitest + E2E）
+        # vitest 必然产出结果；E2E 开启时追加写入同一目录。
+        # 与后端 artifact 一起由 report.yml 聚合成单一 HTML 报告。
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-allure-results
+          # 同时覆盖 apps/web/allure-results 下的 vitest 与 playwright 结果。
+          path: apps/web/allure-results
+          if-no-files-found: warn
+          retention-days: 14

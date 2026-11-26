@@ -1,0 +1,299 @@
+# ==========================================================
+# 应用编排：migrate / backend / celery-worker / celery-beat / nginx
+#            + caddy（profile: tls）/ cloudflared（profile: tunnel）
+#
+# ⚠️ 本地开发专用：本文件仅为本地开发使用；实际部署将采用另一套独立配置。
+#
+# 依赖 infra 编排创建的网络与数据服务（postgres / redis）。启动/校验时把两个文件
+# 合并成同一 compose project，跨文件 depends_on 与健康检查条件才会生效：
+#   docker compose -f docker-compose.infra.yml -f docker-compose.yml up -d
+#   docker compose -f docker-compose.infra.yml -f docker-compose.yml config -q
+#
+# 注意：只解析本文件（不带 -f docker-compose.infra.yml）会因 postgres/redis 未定义而
+# 报 “depends on undefined service”。这是刻意的取舍：跨服务健康依赖必须显式声明，
+# 不靠 sleep 或容器启动顺序碰运气；基础设施与应用因此以「合并启动、独立销毁」协作：
+#   docker compose -f docker-compose.infra.yml down        （应用跑着时不要单独停 infra）
+#
+# 镜像：
+#   docker/backend.Dockerfile  -> home-toolkit-backend:dev（多阶段、非 root、uv.lock 锁版本）
+#   docker/web.Dockerfile      -> home-toolkit-nginx:dev（pnpm workspace 构建 apps/web 的 dist 打进 nginx）
+# 构建上下文均为仓库根目录，Dockerfile 内 COPY 路径以此为准。
+# ==========================================================
+
+x-backend-base: &backend-base
+  image: home-toolkit-backend:dev
+  build:
+    context: .
+    dockerfile: docker/backend.Dockerfile
+    target: runtime
+  env_file:
+    # Django settings 从环境变量读取（SECRET_KEY / POSTGRES_* / REDIS_URL 等）。
+    - .env
+  environment:
+    # 镜像内已有默认值，这里显式声明便于排查与覆盖。
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    # 默认入口为明文 http（Caddy / cloudflared 尚未启用时）。prod 默认强制 HTTPS 会让
+    # 浏览器与容器内健康探针都收到 301 到不存在的 https 端口，故编排层默认关闭；
+    # 启用 Cloudflare Tunnel / 内网证书后，在 .env 设置
+    # DJANGO_SECURE_SSL_REDIRECT=true 即可恢复全站 HTTPS 跳转。
+    DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-false}
+  networks:
+    - home-toolkit-net
+  restart: unless-stopped
+
+services:
+  # 一次性任务：先于 backend/celery 完成建表（django_celery_beat/results 也在其中）。
+  # 非零退出会让依赖它的服务不启动，避免带着未迁移的库起应用。
+  migrate:
+    <<: *backend-base
+    container_name: home-toolkit-migrate
+    restart: "no"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+        # postgres 由 infra 编排定义，需与 infra 文件合并启动（见文件头说明）。
+        required: false
+    healthcheck:
+      disable: true
+
+  # 后端应用服务（gunicorn + uvicorn worker）
+  backend:
+    <<: *backend-base
+    container_name: home-toolkit-backend
+    command:
+      - gunicorn
+      - config.asgi:application
+      - --worker-class
+      - uvicorn.workers.UvicornWorker
+      - --bind
+      - 0.0.0.0:8000
+      - --workers
+      - "3"
+      - --timeout
+      - "60"
+      - --access-logfile
+      - "-"
+      - --error-logfile
+      - "-"
+    expose:
+      # 只对共享网络暴露，宿主机唯一入口是 nginx。
+      - "8000"
+    volumes:
+      # 与 nginx 共享 MEDIA 目录（nginx 以只读方式挂载同一卷）。
+      - mediadata:/srv/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      # 不依赖 curl/wget：镜像自带 python，直接请求 /healthz。
+      # 显式带上 X-Forwarded-Proto: https：开启 SECURE_SSL_REDIRECT 后，Django 会依据
+      # SECURE_PROXY_SSL_HEADER 判定协议，缺此头则把探针请求 301 到 https，探活必然失败。
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; req = urllib.request.Request('http://127.0.0.1:8000/healthz', headers={'X-Forwarded-Proto': 'https'}); sys.exit(0 if urllib.request.urlopen(req, timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Celery 异步任务进程（日历提醒等），复用 backend 镜像，仅覆盖 command。
+  celery-worker:
+    <<: *backend-base
+    container_name: home-toolkit-celery-worker
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      # ping 通过 Broker 往返，能同时验证 worker 存活与 Redis 连通性。
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Celery 定时调度：调度表存数据库（django-celery-beat），单副本部署。
+  celery-beat:
+    <<: *backend-base
+    container_name: home-toolkit-celery-beat
+    command:
+      - celery
+      - -A
+      - config
+      - beat
+      - --loglevel=INFO
+      - --scheduler
+      - django_celery_beat.schedulers:DatabaseScheduler
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      # beat 无端口可探，进程存活即视为健康（异常退出由 restart 策略拉起）。
+      disable: true
+
+  # 唯一对外入口：静态资源 + 反向代理（upstream backend:8000 与服务名一致）。
+  nginx:
+    image: home-toolkit-nginx:dev
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: nginx
+    container_name: home-toolkit-nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # 仅绑定回环：公网走 cloudflared 出站隧道，内网走 Caddy 443（真实证书），
+      # 8080 不再对局域网/公网发布，只留宿主机本机（127.0.0.1）做调试与健康验证，
+      # 避免绕过隧道直连明文入口。
+      - "127.0.0.1:8080:80"
+    volumes:
+      # 富文本图片：nginx.conf 的 /protected-media/ alias 指向 /srv/media。
+      - mediadata:/srv/media:ro
+    networks:
+      - home-toolkit-net
+    restart: unless-stopped
+    healthcheck:
+      # 端到端探活：nginx 自身与 backend 反代链路都要通。
+      # 开启 SECURE_SSL_REDIRECT 后，/healthz 对非 https 请求会 301；探针需按 https
+      # 语义发送（回环地址已在 nginx.conf 的 geo 中受信任），否则会被 301 打断。
+      test: ["CMD-SHELL", "wget -qO- --header='X-Forwarded-Proto: https' http://127.0.0.1/healthz >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # 内网真实证书入口（profile=tls，默认不启动）
+  #
+  # 为什么需要它：Refresh Token 用 httpOnly + Secure Cookie，内网纯 http 下浏览器
+  # 根本不会回传该 Cookie，因此内网也必须能访问 https://<域名>。
+  #
+  # 为什么不让 nginx 自己 listen 443：DNS-01 需要 cloudflare provider 插件，
+  # 官方 nginx 镜像没有；Caddy 只需在官方 builder 镜像里编译一行 xcaddy 即可获得
+  # 该插件，且自带自动续期与热加载，省掉「证书文件同步 + nginx reload」的钩子链。
+  # nginx 保持 listen 80 不动，Caddy 与 cloudflared 都反代 nginx:80，
+  # 真实协议由 nginx.conf 的 geo/map 判定。
+  #
+  # 启用前提（缺任一项容器会启动失败，故不放进默认 profile）：
+  #   1. .env 填 APP_DOMAIN（单域名，如 app.example.com，DNS 已在 Cloudflare 托管）
+  #   2. .env 填 CF_API_TOKEN（权限 Zone.DNS Edit，作用域限定该 zone）
+  #   3. 宿主 443 空闲；若已被占用，改为 "8443:443" 并让内网客户端走 :8443
+  # 启动方式：docker compose -f docker-compose.infra.yml -f docker-compose.yml \
+  #             --profile tls up -d caddy
+  #
+  # 为什么用 ${VAR:-} 空默认而不是 ${VAR:?}：infra + app 两个文件要能在无 .env 变量
+  # 的 CI/本地场景下通过 config -q 校验；:? 会让校验直接失败。空值的影响被限制在
+  # 「启用 tls profile 时该容器起不来」，不会污染默认启动路径。
+  # ---------------------------------------------------------------------------
+  caddy:
+    # 官方镜像不含第三方 DNS provider：Caddyfile 的 DNS-01 需要
+    # dns.providers.cloudflare，直接跑 caddy:2-alpine 会报 module not registered
+    # 并反复重启，所以用 docker/caddy.Dockerfile 在官方 builder 镜像里编译带插件的二进制。
+    image: home-toolkit-caddy:dev
+    build:
+      context: .
+      dockerfile: docker/caddy.Dockerfile
+      target: runtime
+    container_name: home-toolkit-caddy
+    # 凭据最小化：不用 env_file 全量注入 .env（否则 DJANGO_SECRET_KEY /
+    # POSTGRES_PASSWORD / REDIS_PASSWORD 等无关敏感变量会一起进入容器）。
+    # 只注入 Caddyfile 真正读取的两项，由 compose 从 .env 插值：
+    # Caddyfile 用 {$APP_DOMAIN} / {env.CF_API_TOKEN} 读取。
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-}
+      CF_API_TOKEN: ${CF_API_TOKEN:-}
+      # 容器内无法直连外网时（如 Docker Desktop 只开放宿主代理），签证书会卡在
+      # ACME 目录请求超时。Go 会为 https 请求读取该变量；留空即为直连。
+      # 注意只设 HTTPS：反向代理 nginx:80 走明文 http，不应被代理接管。
+      HTTPS_PROXY: ${CADDY_HTTPS_PROXY:-}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      # 证书与私钥：务必纳入备份，重签过频会触发 CA 速率限制。
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      # 内网 https 入口（宿主 443 -> 容器 443）。
+      - "443:443"
+    networks:
+      - home-toolkit-net
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["tls"]
+
+  # ---------------------------------------------------------------------------
+  # 公网入口：Cloudflare Tunnel 出站连接（profile=tunnel，默认不启动）
+  #
+  # 只建立出站连接，不发布任何端口：源站不暴露 80/443，无需公网 IP 或端口映射。
+  # TLS 在 Cloudflare 边缘终止，cloudflared 回源 nginx:80 为明文 HTTP，
+  # 因此 CF 侧需下发 X-Forwarded-Proto: https，nginx 的 geo/map 才会采信。
+  #
+  # 启用前提：.env 填 CF_TUNNEL_TOKEN（CF 后台 Zero Trust -> Tunnels 详情页复制），
+  # 且 Tunnel 的 Public Hostname 指向 http://nginx:80。
+  # 启动方式：docker compose -f docker-compose.infra.yml -f docker-compose.yml \
+  #             --profile tunnel up -d cloudflared
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    # 本机离线环境未预置该镜像，latest 仅作占位；联网后请固定到具体 tag 或 digest
+    # （例如 cloudflare/cloudflared:2025.x.y），避免隐式升级带来的行为变化。
+    image: cloudflare/cloudflared:latest
+    container_name: home-toolkit-cloudflared
+    # 凭据最小化：不用 env_file 全量注入 .env，本服务只需要 tunnel token 一项。
+    #
+    # token 注入方式：已改用 cloudflared 官方支持的 TUNNEL_TOKEN 环境变量
+    # （tunnel run 未给 --token 时即从此环境变量读取）。token 只作为容器环境变量
+    # 传入，不再进入 argv，因此 ps / docker inspect 的 Cmd 字段不会泄露它；
+    # compose 只对宿主机 .env 中的 CF_TUNNEL_TOKEN 插值到容器环境变量，
+    # 不向容器注入其他 .env 变量。
+    #
+    # token 为空时 cloudflared 会直接报错退出（仅影响启用 tunnel profile 的场景），
+    # 用 :- 而非 :? 是为了不阻塞 config -q 校验。
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN:-}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    networks:
+      - home-toolkit-net
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["tunnel"]
+
+volumes:
+  # 与 nginx 共享的上传目录；固定名字便于运维定位与备份。
+  mediadata:
+    name: home-toolkit-media
+  # Caddy 签发的证书/私钥与运行配置（重建容器后复用，避免重复签发）。
+  caddy-data:
+    name: home-toolkit-caddy-data
+  caddy-config:
+    name: home-toolkit-caddy-config
+
+networks:
+  # 引用 docker-compose.infra.yml 创建的共享网络
+  home-toolkit-net:
+    external: true
+    name: home-toolkit-net

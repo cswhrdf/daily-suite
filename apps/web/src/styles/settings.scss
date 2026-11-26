@@ -1,0 +1,8 @@
+@use 'vuetify/settings' with (
+  $body-font-family: (
+    'Roboto',
+    'Helvetica Neue',
+    sans-serif,
+  ),
+  $border-radius-root: 8px
+);

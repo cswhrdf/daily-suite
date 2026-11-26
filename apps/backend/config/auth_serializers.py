@@ -1,0 +1,20 @@
+"""JWT 认证端点的请求与响应序列化器。"""
+
+from rest_framework import serializers
+
+
+class LoginSerializer(serializers.Serializer[dict[str, str]]):
+    """登录请求体：用户名 + 密码。"""
+
+    username = serializers.CharField(max_length=150, trim_whitespace=True)
+    password = serializers.CharField(
+        max_length=128,
+        trim_whitespace=False,
+        style={"input_type": "password"},
+    )
+
+
+class AccessTokenSerializer(serializers.Serializer[dict[str, str]]):
+    """只返回 Access Token；Refresh Token 走 httpOnly Cookie。"""
+
+    access = serializers.CharField(read_only=True)
