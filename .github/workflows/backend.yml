@@ -93,7 +93,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv（启用锁文件缓存）
-        uses: astral-sh/setup-uv@v10.3.3
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           # 与 docker/backend.Dockerfile 中使用的 uv 版本保持一致。
           version: "0.13.7"
