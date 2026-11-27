@@ -1,0 +1,104 @@
+# =============================================================================
+# Dependabot PR 自动审核与自动合并（按 compatibility score 放行）
+#
+# 目的：让「兼容性评分足够高」的 Dependabot 依赖升级 PR 在 CI 全绿后自动合并，
+#   省掉人工 approve；评分不足或 major 升级仍保持人工审核。
+#
+# 放行规则：
+#   1. 所有 dependabot PR 先用 fetch-metadata 读取 update-type 与 compatibility-score
+#      （后者是 0-100 的整数百分比，查询不到时输出 0）；
+#   2. compatibility-score >= 阈值且 update-type != version-update:semver-major 时：
+#      自动 approve，并开启 squash auto-merge；
+#   3. 其余情况（评分低于阈值、评分为 0/未知、major 升级）既不 approve 也不 merge，
+#      保持人工审核。
+#
+# 阈值变量：
+#   仓库 Settings → Secrets and variables → Actions → Variables 中新增
+#   Repository variable：DEPENDABOT_AUTO_APPROVE_MIN_SCORE（例如 90）。
+#   未设置时默认 90；填了非整数时按 90 处理并在日志里告警。
+#
+# 关于「CI 实际检验通过后才合并」：
+#   gh pr merge --auto --squash 只是「开启」自动合并，GitHub 会等该 PR 的全部
+#   required status checks（即分支保护里要求的分支检查）通过后才真正执行 squash
+#   合并；期间任一检查失败或有新提交，合并都会保持在等待状态。因此等价于
+#   「测试全量跑一遍通过后直接合并」，本 workflow 自身不需要等待检查结果。
+#
+# 说明：
+#   - 依赖 GitHub CLI（gh，ubuntu runner 内置）；
+#   - approve/merge 用 token，需要分支保护允许 bot 的 approve 计入所需审核数；
+#     若分支保护要求 code owner 审核，本 workflow 的 approve 不满足，需另配；
+#   - 仓库需在 Settings → General 中允许 auto-merge，否则 gh pr merge --auto 会失败
+#     （已做容错，不会让 job 变红）；
+#   - fetch-metadata 官方 README 建议 compat-lookup 使用 PAT：配置了
+#     secrets.DEPENDABOT_PAT 时优先用它，否则回退 GITHUB_TOKEN（compatibility score
+#     实际来自公开的 dependabot-badges 接口，不校验 token）。
+# =============================================================================
+name: Dependabot Auto Approve
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-approve:
+    name: 按兼容性评分自动批准并开启自动合并
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    env:
+      # 阈值放在 job 级 env，判定步骤与日志都能直接读到。
+      MIN_SCORE: ${{ vars.DEPENDABOT_AUTO_APPROVE_MIN_SCORE || '90' }}
+    steps:
+      - name: 读取 Dependabot 元数据（含兼容性评分）
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.DEPENDABOT_PAT || secrets.GITHUB_TOKEN }}
+          # compat-lookup 必须显式开启，否则 compatibility-score 恒为 0。
+          compat-lookup: true
+
+      - name: 判定是否达到自动放行阈值
+        id: gate
+        env:
+          SCORE: ${{ steps.dependabot-metadata.outputs.compatibility-score }}
+          UPDATE_TYPE: ${{ steps.dependabot-metadata.outputs.update-type }}
+        run: |
+          # 查不到兼容性评分时输出为空，按 0 处理，避免空值被当成高分放行。
+          SCORE="${SCORE:-0}"
+          # 阈值做一次合法性校验，防止变量填错导致比较行为异常。
+          if ! printf '%s' "$MIN_SCORE" | grep -Eq '^[0-9]+$'; then
+            echo "::warning::DEPENDABOT_AUTO_APPROVE_MIN_SCORE=$MIN_SCORE 不是整数，按 90 处理。"
+            MIN_SCORE=90
+          fi
+          echo "compatibility-score=$SCORE，阈值=$MIN_SCORE，update-type=$UPDATE_TYPE"
+          # 同时满足「高分」与「非 major」才放行；major 一律保留人工审核。
+          if [ "$SCORE" -ge "$MIN_SCORE" ] && [ "$UPDATE_TYPE" != "version-update:semver-major" ]; then
+            echo "allow=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "allow=false" >> "$GITHUB_OUTPUT"
+            echo "未达到自动放行条件（评分不足或 major 升级），保持人工审核。"
+          fi
+
+      - name: 自动批准 PR（仅高分且非 major）
+        if: ${{ steps.gate.outputs.allow == 'true' }}
+        run: |
+          # 幂等容错：已经批准过时 gh 会返回非零，这里吞掉并提示跳过。
+          gh pr review --approve "$PR_URL" \
+            || echo "已批准或无法批准（跳过）"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 开启自动合并（仅高分且非 major）
+        if: ${{ steps.gate.outputs.allow == 'true' }}
+        run: |
+          # --auto 让 GitHub 等 required checks 全绿后再 squash 合并，等价于
+          # 「CI 测试通过后直接合并」；幂等容错同上。
+          gh pr merge --auto --squash "$PR_URL" \
+            || echo "自动合并已开启或条件未满足（跳过）"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

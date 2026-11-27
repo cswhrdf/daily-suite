@@ -1,0 +1,52 @@
+# =============================================================================
+# CodeQL 语义代码分析（public 仓库免费）
+#
+# 扫描 Python（apps/backend）与 JavaScript/TypeScript（apps/web）的语义级
+# 安全漏洞（注入、XSS、路径遍历等），作为 bandit/semgrep 之外的深度补充。
+# 结果上传到仓库 Security 标签页（Code scanning）。
+#
+# 说明：
+#   - public 仓库免费可用；private 仓库需 GitHub Code Security（原 GHAS）。
+#   - Python 与 JS/TS 均为解释型，build-mode 用 none（无需编译步骤）。
+#   - 每周一 01:30 UTC 定时复查（代码不变但查询规则会更新）。
+# =============================================================================
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 1 * * 1"
+
+permissions:
+  contents: read
+  security-events: write   # 上传 SARIF 到 Security 标签页
+
+jobs:
+  analyze:
+    name: CodeQL 分析（${{ matrix.language }}）
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: 执行 CodeQL 分析
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

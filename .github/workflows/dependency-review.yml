@@ -7,10 +7,12 @@
 #   - pip-audit / pnpm audit 看“当前锁文件整体是否有漏洞”，用于持续扫描存量。
 #
 # 权限说明：
-#   - 公开仓库可直接用；
-#   - 私有仓库需要 GitHub Advanced Security（GHAS）才允许使用该 action。
-#     没有 GHAS 时，本 workflow 会失败于 action 调用处，可删除本文件，
-#     改用 security.yml 中的 Trivy + pip-audit/pnpm audit 承担同样的把关。
+#   - public 仓库（含本仓库）完全免费，无需任何许可；
+#   - private 仓库需要 GitHub Code Security（原 GHAS 的 Code Security 部分，
+#     仅 Team / Enterprise 组织可购买，按活跃提交者计费，组织可申请 30 天试用）。
+#     未启用时 dependency review 的 compare API 返回 403、action 直接失败，
+#     此时可删除本文件，改用 security.yml 的 Trivy + backend.yml 的 pip-audit、
+#     frontend.yml 的 pnpm audit 承担同样的把关。
 # =============================================================================
 name: Dependency Review
 

@@ -31,7 +31,46 @@
 - 后端：ruff、mypy、pytest（覆盖率 100%，含分支）、deptry。
 - 前端：eslint、stylelint、vue-tsc、vitest。
 
-CI 会以相同门禁校验，任一项失败即阻断合并。
+CI 会以相同门禁校验（见下节），任一项失败即阻断合并。
+
+## CI/CD 流水线
+
+配置都在 `.github/`。workflow 里的命令与本地脚本一一对应，改任一侧都要同步另一侧。
+
+| Workflow | 触发 | 作用 |
+| --- | --- | --- |
+| `backend.yml`（Backend CI） | 改动 `apps/backend/**` 的推送（`main`）/PR，可手动 | `uv sync --locked --all-groups` → `ruff check` → `mypy`（strict）→ `pytest`（100% 覆盖率门禁，产出 Allure 结果）→ `pip-audit`（OSV，`--strict` 有洞即拦）→ `bandit`（medium 及以上）→ `deptry`（硬门禁）。附带 `postgres:19-alpine` service 容器 |
+| `frontend.yml`（Frontend CI） | 改动 `apps/web/**`、锁文件、根 `package.json` 的推送（`main`）/PR，可手动 | 仓库根 `pnpm install --frozen-lockfile` → eslint → stylelint → vue-tsc → vitest（Allure 结果）→ Playwright E2E（仅当仓库变量 `ENABLE_E2E=true`）→ `pnpm audit --audit-level=high` |
+| `report.yml`（Allure Report） | Backend CI / Frontend CI 运行结束后（`workflow_run`），可手动 | 下载前后端 `allure-results` → 合并到同一目录 → `allure generate`（Allure 3，Node 运行时，无需 Java）→ 上传 `allure-report` artifact（保留 30 天）。上游失败也出报告，被取消的运行不处理 |
+| `security.yml`（Security Scan） | 推送 `main`、依赖或 `docker/**` 变更的 PR、每周一 03:00 UTC、手动 | Trivy `fs`（漏洞 + secret + IaC）与 `image`（`python:3.12-slim-bookworm`、`nginx:1.30-alpine`，与 Dockerfile 同步）、gitleaks 扫完整 git 历史；命中即失败 |
+| `dependency-review.yml` | PR → `main` | 只看本 PR 新引入/升级的依赖，`high` 及以上阻断；豁免写在 `.github/dependency-review-config.yml`。public 免费，私有仓库需 GitHub Code Security |
+| `dependabot-auto-approve.yml` | `dependabot[bot]` 的 PR → `main` | 读兼容性评分：评分 ≥ 阈值且非 major 时自动 approve 并开启 squash auto-merge，其余保持人工审核 |
+| `dependabot.yml` | 每周一 04:00（Asia/Shanghai） | 更新 uv（`/apps/backend`）、npm（`/`，覆盖 pnpm workspace）、github-actions（`/`）；minor + patch 分组，major 单独开 PR；typescript 的 major 暂忽略 |
+
+### 仓库侧需配置的 Secrets / Variables
+
+位置：Settings → Secrets and variables → Actions。
+
+| 名称 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `DJANGO_SECRET_KEY` | Secret | 建议 | 未配置时回落到 `backend.yml` 里的 CI 专用占位值（保证 fork PR 也能跑）；不要复用真实环境密钥 |
+| `CI_POSTGRES_PASSWORD` | Secret | 可选 | 未配置时用 CI 内部固定口令，该 PostgreSQL 只在 runner 本地网络 |
+| `DEPENDABOT_PAT` | Secret | 可选 | 查询兼容性评分时优先使用，否则回退 `GITHUB_TOKEN` |
+| `ENABLE_E2E` | Variable | 可选 | 设为 `true` 才执行 Playwright E2E；不设置则默认跳过 |
+| `DEPENDABOT_AUTO_APPROVE_MIN_SCORE` | Variable | 可选 | 自动 approve 的兼容性评分阈值，默认 `90`，填非整数按 90 处理 |
+
+`GITLEAKS_LICENSE` 仅当改用 `gitleaks/gitleaks-action` 时才需要；当前用社区版 CLI 镜像，无需配置。
+
+### 权限与仓库设置注意点
+
+- workflow 默认 `permissions: contents: read`。Trivy 结果若要进 Security 标签页，需给 `security.yml` 加 `security-events: write` 并补 SARIF 上传步骤（私有仓库还需 GitHub Code Security）；当前只用退出码让流水线失败。
+- 私有仓库未启用 GitHub Code Security 时 `dependency-review.yml` 会在 action 调用处失败，可删除该文件，由 Trivy、`pip-audit`、`pnpm audit` 承担同样的把关。
+- 要让 Dependabot PR 跑完整流水线，需在 Settings → Actions → General 允许 Dependabot 访问 secrets；自动合并且要求仓库开启 auto-merge，并且分支保护允许 bot 的 approve 计入所需审核数。
+
+### 本地能验证什么
+
+- 能：YAML 语法（如 `python -c "import yaml; yaml.safe_load(open('.github/workflows/backend.yml'))"`），以及各门禁命令本地实跑。
+- 不能：GitHub Actions 的运行环境（service 容器、artifact、Secrets 语义），因此「CI 全绿」只能推送后由 GitHub 验证。
 
 ## 提交规范
 
