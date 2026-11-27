@@ -55,6 +55,8 @@ MIDDLEWARE = [
     # Django 6 内置 CSP 中间件
     "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # 按 Accept-Language 激活语言；必须位于 Session 之后、Common 之前。
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -147,7 +149,18 @@ PASSWORD_HASHERS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+# 默认语言为简体中文；其余语言由 LocaleMiddleware 依 Accept-Language 激活。
+LANGUAGE_CODE = "zh-hans"
+
+# 允许激活的语言（与 gettext 的 locale 标识一致）。
+LANGUAGES = [
+    ("zh-hans", "简体中文"),
+    ("en", "English"),
+]
+
+# 翻译文件目录：当前仅预留位置，尚未运行 makemessages 生成 .po/.mo，
+# 因此所有语言暂时都直接返回中文 msgid。
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 TIME_ZONE = "UTC"
 

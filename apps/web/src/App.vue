@@ -5,7 +5,7 @@
 <template>
   <v-app>
     <v-app-bar color="primary" density="compact" flat>
-      <v-app-bar-title>Daily Suite</v-app-bar-title>
+      <v-app-bar-title>{{ $t('app.title') }}</v-app-bar-title>
     </v-app-bar>
 
     <v-main>

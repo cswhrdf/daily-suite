@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import pluginVue from 'eslint-plugin-vue'
+import vuejsAccessibility from 'eslint-plugin-vuejs-accessibility'
 import { defineConfig } from 'eslint/config'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
@@ -35,6 +36,9 @@ export default defineConfig(
     },
   },
   ...pluginVue.configs['flat/recommended'],
+  // Vue 模板的静态可访问性检查：插件自带 flat config 预设
+  // （flat/recommended 是一个数组，直接展开即可，files 已限定为 *.vue）。
+  ...vuejsAccessibility.configs['flat/recommended'],
   {
     files: ['**/*.vue'],
     languageOptions: {

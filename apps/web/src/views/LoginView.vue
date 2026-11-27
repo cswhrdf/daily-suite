@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -7,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const username = ref('')
 const password = ref('')
@@ -28,7 +30,7 @@ async function submit(): Promise<void> {
     const redirect = typeof redirectParam === 'string' ? redirectParam : '/'
     await router.replace(redirect)
   } catch {
-    errorMessage.value = '用户名或密码错误，请重试。'
+    errorMessage.value = t('login.error')
   } finally {
     isLoading.value = false
   }
@@ -40,7 +42,7 @@ async function submit(): Promise<void> {
     <v-row align="center" justify="center">
       <v-col cols="12">
         <v-card :loading="isLoading" elevation="4" rounded="lg">
-          <v-card-title class="text-h5">登录 Daily Suite</v-card-title>
+          <v-card-title class="text-h5">{{ t('login.title') }}</v-card-title>
           <v-card-text>
             <v-alert
               v-if="errorMessage !== ''"
@@ -53,14 +55,14 @@ async function submit(): Promise<void> {
               <v-text-field
                 v-model="username"
                 autocomplete="username"
-                label="用户名"
+                :label="t('login.username')"
                 prepend-inner-icon="mdi-account"
                 required
               />
               <v-text-field
                 v-model="password"
                 autocomplete="current-password"
-                label="密码"
+                :label="t('login.password')"
                 prepend-inner-icon="mdi-lock"
                 required
                 type="password"
@@ -73,7 +75,7 @@ async function submit(): Promise<void> {
                 type="submit"
                 variant="flat"
               >
-                登录
+                {{ t('login.submit') }}
               </v-btn>
             </v-form>
           </v-card-text>

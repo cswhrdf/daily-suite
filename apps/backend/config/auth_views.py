@@ -14,6 +14,7 @@
 from contextlib import suppress
 
 from django.contrib.auth import authenticate
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.authentication import BaseAuthentication
@@ -55,7 +56,7 @@ class LoginView(APIView):
         )
         if user is None:
             return Response(
-                {"detail": "用户名或密码错误。"},
+                {"detail": _("用户名或密码错误。")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         refresh = RefreshToken.for_user(user)
@@ -79,7 +80,7 @@ class RefreshView(APIView):
         raw_refresh = get_refresh_cookie(request)
         if raw_refresh is None:
             return Response(
-                {"detail": "缺少 Refresh Token Cookie。"},
+                {"detail": _("缺少 Refresh Token Cookie。")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         # TokenRefreshSerializer 按 SIMPLE_JWT 决定是否轮换 / 拉黑旧令牌。
@@ -88,7 +89,7 @@ class RefreshView(APIView):
             refresh_serializer.is_valid(raise_exception=True)
         except (TokenError, AuthenticationFailed):
             return Response(
-                {"detail": "刷新凭据无效或已过期。"},
+                {"detail": _("刷新凭据无效或已过期。")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         validated = refresh_serializer.validated_data
@@ -109,7 +110,8 @@ class LogoutView(APIView):
     @extend_schema(
         request=None,
         responses={
-            status.HTTP_204_NO_CONTENT: OpenApiResponse(description="已登出，Cookie 已清除"),
+            # schema 在导入时构建，此时尚无请求语言上下文，故直接取 msgid（中文）。
+            status.HTTP_204_NO_CONTENT: OpenApiResponse(description=_("已登出，Cookie 已清除")),
         },
     )
     def post(self, request: Request) -> Response:
