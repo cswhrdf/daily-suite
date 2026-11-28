@@ -48,11 +48,76 @@ export default defineConfig(
     },
   },
   {
+    // 该配置块含类型感知规则（如 no-floating-promises），
+    // 必须与带 projectService 的作用域一致，否则纯 JS 配置文件无法解析类型信息。
+    files: typedFiles,
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+    },
     rules: {
       // 根组件沿用 Vue 官方约定名 App，属于模板豁免。
       'vue/multi-word-component-names': ['error', { ignores: ['App'] }],
-      // Vue 模板 HTML 属性书写顺序：显式启用，采用官方默认顺序。
-      'vue/attributes-order': 'error',
+      // Vue 模板 HTML 属性书写顺序：采用官方默认分组顺序，同组内按属性名字母序排序。
+      'vue/attributes-order': ['error', { alphabetical: true }],
+
+      // ==========================================
+      // 1. Vue 3 核心架构与安全性严格规则
+      // ==========================================
+
+      // 强制全项目只允许使用 <script setup> 语法糖，禁止混用 Options API。
+      'vue/component-api-style': ['error', ['script-setup']],
+
+      // 强制编译器宏声明顺序：defineProps → defineEmits → defineSlots。
+      'vue/define-macros-order': [
+        'error',
+        {
+          order: ['defineProps', 'defineEmits', 'defineSlots'],
+        },
+      ],
+
+      // 强制布尔属性简写，禁止冗余的 :disabled="true"。
+      'vue/prefer-true-attribute-shorthand': 'error',
+
+      // 完全禁用 v-html 指令，从源头杜绝 XSS。
+      'vue/no-v-html': 'error',
+
+      // 强制所有 Vue 组件的 <script> 必须显式声明 lang="ts"。
+      // 注意：正确规则名是 vue/block-lang，不存在 vue/block-lang-argument。
+      'vue/block-lang': ['error', { script: { lang: 'ts' } }],
+
+      // ==========================================
+      // 2. TypeScript 严格类型与异步逻辑规则
+      // ==========================================
+
+      // 严禁滥用 any，强制明确类型或使用 unknown。
+      '@typescript-eslint/no-explicit-any': 'error',
+
+      // 强制公共函数与导出方法显式声明返回值类型（箭头表达式豁免）。
+      '@typescript-eslint/explicit-function-return-type': [
+        'error',
+        {
+          allowExpressions: true,
+        },
+      ],
+
+      // 严禁悬空 Promise，异步调用必须被 await/then/catch 消费。
+      '@typescript-eslint/no-floating-promises': 'error',
+
+      // 禁止将 Promise 误传给不需要 Promise 的原生事件句柄。
+      '@typescript-eslint/no-misused-promises': 'error',
+
+      // ==========================================
+      // 3. 生产环境通用质量规则
+      // ==========================================
+
+      // 强制使用 === / !==，禁止 == / != 的隐式转换。
+      eqeqeq: ['error', 'always'],
+
+      // 生产环境禁止 console.log，开发环境放行。
+      'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+
+      // 任何环境禁止 debugger。
+      'no-debugger': 'error',
     },
   },
   {

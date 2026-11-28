@@ -41,7 +41,7 @@ async function submit(): Promise<void> {
   <v-container class="fill-height" max-width="520">
     <v-row align="center" justify="center">
       <v-col cols="12">
-        <v-card :loading="isLoading" elevation="4" rounded="lg">
+        <v-card elevation="4" :loading="isLoading" rounded="lg">
           <v-card-title class="text-h5">{{ t('login.title') }}</v-card-title>
           <v-card-text>
             <v-alert

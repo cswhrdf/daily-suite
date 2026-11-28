@@ -24,7 +24,7 @@ function chipStyle(color: Tag['color']): CSSProperties {
 </script>
 
 <template>
-  <div class="tag-chip-list" :aria-label="t('tags.chip.listLabel')" role="group">
+  <div :aria-label="t('tags.chip.listLabel')" class="tag-chip-list" role="group">
     <template v-for="tag in tags" :key="tag.id">
       <button
         v-if="clickable"
@@ -32,13 +32,13 @@ function chipStyle(color: Tag['color']): CSSProperties {
         type="button"
         @click="emit('select', tag)"
       >
-        <v-chip class="tag-chip" :style="chipStyle(tag.color)" size="small">
-          <span class="tag-chip-dot" aria-hidden="true" />
+        <v-chip class="tag-chip" size="small" :style="chipStyle(tag.color)">
+          <span aria-hidden="true" class="tag-chip-dot" />
           <span>{{ tag.name }}</span>
         </v-chip>
       </button>
-      <v-chip v-else class="tag-chip" :style="chipStyle(tag.color)" size="small">
-        <span class="tag-chip-dot" aria-hidden="true" />
+      <v-chip v-else class="tag-chip" size="small" :style="chipStyle(tag.color)">
+        <span aria-hidden="true" class="tag-chip-dot" />
         <span>{{ tag.name }}</span>
       </v-chip>
     </template>

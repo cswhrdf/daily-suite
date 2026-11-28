@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { VApp, VBottomNavigation } from 'vuetify/components'
 
 import AppBottomNavigation from '@/components/layout/AppBottomNavigation.vue'
@@ -27,7 +27,7 @@ const items: NavItem[] = [
   { title: 'nav.todos', to: '/todos' },
 ]
 
-async function testRouter(path: string, title?: string) {
+async function testRouter(path: string, title?: string): Promise<Router> {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [

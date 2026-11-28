@@ -1,0 +1,80 @@
+# 提交钩子：每次提交只跑「最重要子集」，全量门禁（含 e2e、全量覆盖率）留给 CI。
+#
+# 安装：pre-commit install
+# 依赖：系统 PATH 中需要可用的 `uv` 与 `pnpm`（本仓库后端用 uv、前端用 pnpm 管理）。
+#
+# 流程：
+#   后端：mypy 类型检查 → ruff 检查并自动修复 + ruff format 格式化 → pytest 核心子集
+#   前端：vue-tsc 类型检查 → eslint/stylelint 检查并自动修复 → prettier 格式化 → vitest 核心子集
+#   e2e（playwright）不在本地钩子执行，仅在 CI 执行。
+#
+#   带 --fix / 格式化的钩子在改动文件后会用 git add -u 自动重新暂存，
+#   因此无需在提交失败后手动 git add 再提交一次。
+repos:
+  - repo: local
+    hooks:
+      # ---------- 后端 ----------
+      - id: backend-mypy
+        name: 后端 mypy 类型检查
+        entry: uv --directory apps/backend run mypy
+        language: system
+        pass_filenames: false
+        files: ^apps/backend/
+
+      - id: backend-ruff
+        name: 后端 ruff 检查并自动修复 + 格式化
+        entry: bash
+        args:
+          - '-c'
+          - 'uv --directory apps/backend run ruff check . --fix && uv --directory apps/backend run ruff format . && git add -u apps/backend'
+        language: system
+        pass_filenames: false
+        files: ^apps/backend/
+
+      - id: backend-pytest
+        name: 后端核心测试（pytest 子集）
+        entry: uv --directory apps/backend run pytest tests/test_auth.py tests/test_tags.py -q --no-cov
+        language: system
+        pass_filenames: false
+        files: ^apps/backend/
+
+      # ---------- 前端 ----------
+      - id: frontend-typecheck
+        name: 前端类型检查（vue-tsc）
+        entry: bash
+        args:
+          - '-c'
+          - 'cd apps/web && pnpm run typecheck'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/
+
+      - id: frontend-lint
+        name: 前端静态检查并自动修复（eslint + stylelint）
+        entry: bash
+        args:
+          - '-c'
+          - 'cd apps/web && pnpm run lint:fix && pnpm run lint:style:fix && git add -u .'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/
+
+      - id: frontend-format
+        name: 前端格式化（prettier）
+        entry: bash
+        args:
+          - '-c'
+          - 'cd apps/web && pnpm run format && git add -u .'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/
+
+      - id: frontend-test
+        name: 前端核心测试（vitest 子集）
+        entry: bash
+        args:
+          - '-c'
+          - 'cd apps/web && pnpm run test:quick'
+        language: system
+        pass_filenames: false
+        files: ^apps/web/

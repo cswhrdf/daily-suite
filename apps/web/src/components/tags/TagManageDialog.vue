@@ -215,7 +215,7 @@ watch(
               icon="mdi-tag-plus-outline"
               :title="t('tags.manage.emptyTitle')"
             />
-            <v-list v-else class="tag-manage-dialog-list" border rounded="lg">
+            <v-list v-else border class="tag-manage-dialog-list" rounded="lg">
               <v-list-item v-for="tag in tagsStore.ordered" :key="tag.id">
                 <template #prepend>
                   <tag-chip-list :tags="[tag]" />
@@ -275,14 +275,9 @@ watch(
                   variant="outlined"
                   @click="color = tagColor"
                 >
-                  <span class="tag-manage-dialog-swatch" aria-hidden="true" />
+                  <span aria-hidden="true" class="tag-manage-dialog-swatch" />
                   <span class="tag-manage-dialog-hex">{{ tagColor }}</span>
-                  <v-icon
-                    v-if="color === tagColor"
-                    aria-hidden="true"
-                    icon="mdi-check"
-                    size="16"
-                  />
+                  <v-icon v-if="color === tagColor" aria-hidden="true" icon="mdi-check" size="16" />
                 </v-btn>
               </div>
               <p class="text-body-2 text-medium-emphasis mt-2 mb-0">
@@ -296,9 +291,9 @@ watch(
               <v-btn
                 color="primary"
                 data-test="tag-submit"
+                :disabled="saving"
                 :loading="saving"
                 type="submit"
-                :disabled="saving"
               >
                 {{ editingId === null ? t('tags.form.create') : t('tags.form.save') }}
               </v-btn>
@@ -310,8 +305,8 @@ watch(
   </v-dialog>
 
   <v-dialog
-    :model-value="deleteCandidate !== null"
     max-width="440"
+    :model-value="deleteCandidate !== null"
     :persistent="deleting"
     @update:model-value="cancelDelete"
   >
@@ -331,8 +326,8 @@ watch(
         <v-btn
           color="error"
           data-test="tag-delete-confirm"
-          :loading="deleting"
           :disabled="deleting"
+          :loading="deleting"
           @click="confirmDelete"
         >
           {{ t('tags.delete.confirm') }}

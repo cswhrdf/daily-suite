@@ -46,9 +46,7 @@ class Tag(models.Model):
         verbose_name_plural = "标签"
         # 名字唯一性按用户隔离：不同用户可以各自拥有同名标签。
         unique_together = (("owner", "name"),)
-        indexes = (
-            models.Index(fields=("owner",), name="toolkit_tag_owner_idx"),
-        )
+        indexes = (models.Index(fields=("owner",), name="toolkit_tag_owner_idx"),)
 
     def __str__(self) -> str:
         """返回标签名称。"""

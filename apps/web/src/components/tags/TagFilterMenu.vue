@@ -58,15 +58,20 @@ function clearFilter(): void {
     <template #activator="{ props: activatorProps }">
       <v-btn
         v-bind="activatorProps"
+        append-icon="mdi-menu-down"
         class="tag-filter-menu-activator"
         :disabled="disabled"
-        append-icon="mdi-menu-down"
         height="40"
         :loading="loading"
         prepend-icon="mdi-tag-multiple-outline"
         variant="outlined"
       >
-        <span v-if="selectedTag" class="tag-filter-menu-selected-color" :style="colorStyle(selectedTag.color)" aria-hidden="true" />
+        <span
+          v-if="selectedTag"
+          aria-hidden="true"
+          class="tag-filter-menu-selected-color"
+          :style="colorStyle(selectedTag.color)"
+        />
         <span class="tag-filter-menu-activator-text">{{ activatorText }}</span>
       </v-btn>
     </template>
@@ -86,8 +91,8 @@ function clearFilter(): void {
       </div>
       <v-list density="comfortable" nav>
         <v-list-item
-          data-test="tag-filter-all"
           :active="modelValue === null"
+          data-test="tag-filter-all"
           link
           prepend-icon="mdi-tag-off-outline"
           :title="t('tags.filter.all')"
@@ -103,7 +108,7 @@ function clearFilter(): void {
           @click="selectTag(tag.id)"
         >
           <template #prepend>
-            <span class="tag-filter-menu-color" :style="colorStyle(tag.color)" aria-hidden="true" />
+            <span aria-hidden="true" class="tag-filter-menu-color" :style="colorStyle(tag.color)" />
           </template>
         </v-list-item>
       </v-list>
@@ -115,16 +120,21 @@ function clearFilter(): void {
 
   <template v-else-if="smAndDown">
     <v-btn
+      append-icon="mdi-menu-down"
       class="tag-filter-menu-activator"
       :disabled="disabled"
-      append-icon="mdi-menu-down"
       height="40"
       :loading="loading"
       prepend-icon="mdi-tag-multiple-outline"
       variant="outlined"
       @click="mobileOpen = true"
     >
-      <span v-if="selectedTag" class="tag-filter-menu-selected-color" :style="colorStyle(selectedTag.color)" aria-hidden="true" />
+      <span
+        v-if="selectedTag"
+        aria-hidden="true"
+        class="tag-filter-menu-selected-color"
+        :style="colorStyle(selectedTag.color)"
+      />
       <span class="tag-filter-menu-activator-text">{{ activatorText }}</span>
     </v-btn>
     <v-bottom-sheet v-model="mobileOpen">
@@ -143,8 +153,8 @@ function clearFilter(): void {
         </div>
         <v-list density="comfortable" nav>
           <v-list-item
-            data-test="tag-filter-all"
             :active="modelValue === null"
+            data-test="tag-filter-all"
             link
             prepend-icon="mdi-tag-off-outline"
             :title="t('tags.filter.all')"
@@ -160,7 +170,11 @@ function clearFilter(): void {
             @click="selectTag(tag.id)"
           >
             <template #prepend>
-              <span class="tag-filter-menu-color" :style="colorStyle(tag.color)" aria-hidden="true" />
+              <span
+                aria-hidden="true"
+                class="tag-filter-menu-color"
+                :style="colorStyle(tag.color)"
+              />
             </template>
           </v-list-item>
         </v-list>

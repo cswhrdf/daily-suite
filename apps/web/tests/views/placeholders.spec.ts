@@ -29,25 +29,28 @@ const cases = [
 ]
 
 describe('业务空态视图', () => {
-  it.each(cases)('$name 展示空态文案并同步标签筛选值', async ({ component, title, description }) => {
-    const wrapper = mount(component, {
-      global: {
-        stubs: {
-          TagToolbar: {
-            props: ['modelValue'],
-            emits: ['update:modelValue'],
-            template: '<div data-test="tag-toolbar" />',
+  it.each(cases)(
+    '$name 展示空态文案并同步标签筛选值',
+    async ({ component, title, description }) => {
+      const wrapper = mount(component, {
+        global: {
+          stubs: {
+            TagToolbar: {
+              props: ['modelValue'],
+              emits: ['update:modelValue'],
+              template: '<div data-test="tag-toolbar" />',
+            },
           },
         },
-      },
-    })
+      })
 
-    expect(wrapper.text()).toContain(title)
-    expect(wrapper.text()).toContain(description)
-    const toolbar = wrapper.findComponent(TagToolbar)
-    expect(toolbar.exists()).toBe(true)
-    toolbar.vm.$emit('update:modelValue', 1)
-    await nextTick()
-    expect(toolbar.props('modelValue')).toBe(1)
-  })
+      expect(wrapper.text()).toContain(title)
+      expect(wrapper.text()).toContain(description)
+      const toolbar = wrapper.findComponent(TagToolbar)
+      expect(toolbar.exists()).toBe(true)
+      toolbar.vm.$emit('update:modelValue', 1)
+      await nextTick()
+      expect(toolbar.props('modelValue')).toBe(1)
+    },
+  )
 })

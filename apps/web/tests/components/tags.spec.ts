@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
@@ -41,7 +41,11 @@ vi.mock('vuetify', async (importOriginal) => {
   }
 })
 
-function deferred<T>() {
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+  reject: (reason?: unknown) => void
+} {
   let resolve!: (value: T | PromiseLike<T>) => void
   let reject!: (reason?: unknown) => void
   const promise = new Promise<T>((resolvePromise, rejectPromise) => {
@@ -84,7 +88,10 @@ async function setTagName(value: string): Promise<void> {
   await nextTick()
 }
 
-async function mountDialog() {
+async function mountDialog(): Promise<{
+  wrapper: VueWrapper
+  store: ReturnType<typeof useTagsStore>
+}> {
   const pinia: Pinia = createPinia()
   setActivePinia(pinia)
   const store = useTagsStore()
@@ -265,12 +272,7 @@ describe('TagManageDialog', () => {
 
   it('保存失败保留输入并通过 Snackbar 提示已回滚', async () => {
     const { wrapper, store } = await mountDialog()
-    const error = new ApiError(
-      'validation',
-      'apiErrors.validation',
-      '标签名称已存在。',
-      400,
-    )
+    const error = new ApiError('validation', 'apiErrors.validation', '标签名称已存在。', 400)
     mocks.create.mockRejectedValue(error)
 
     await setTagName('重复名称')

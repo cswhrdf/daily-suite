@@ -21,7 +21,11 @@ vi.mock('@/api/tags', () => ({
   remove: mocks.remove,
 }))
 
-function deferred<T>() {
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+  reject: (reason?: unknown) => void
+} {
   let resolve!: (value: T | PromiseLike<T>) => void
   let reject!: (reason?: unknown) => void
   const promise = new Promise<T>((resolvePromise, rejectPromise) => {
@@ -135,9 +139,9 @@ describe('tags store', () => {
     const before = { itemsById: { ...store.itemsById }, ids: [...store.ids] }
     mocks.create.mockRejectedValue(apiError('创建失败'))
 
-    await expect(
-      store.create({ name: '阅读', color: '#217A46' }),
-    ).rejects.toMatchObject({ message: '创建失败' })
+    await expect(store.create({ name: '阅读', color: '#217A46' })).rejects.toMatchObject({
+      message: '创建失败',
+    })
 
     expect(store.itemsById).toEqual(before.itemsById)
     expect(store.ids).toEqual(before.ids)

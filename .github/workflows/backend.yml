@@ -4,6 +4,7 @@
 # 与本地脚本一一对应（均在 apps/backend 下执行）：
 #   uv sync --locked --all-groups
 #     -> uv run ruff check .
+#     -> uv run ruff format . --check
 #     -> uv run mypy
 #     -> uv run pytest           （覆盖率 100% 门禁来自 pyproject.toml 的 addopts）
 #     -> uv run pip-audit        （导出 uv.lock 的 requirements 后按 OSV 审计）
@@ -107,8 +108,8 @@ jobs:
       - name: ruff check
         run: uv run ruff check .
 
-      # 说明：ruff format --check 暂未接入门禁——当前有 1 个文件未按 format 输出，
-      # 属于业务代码改动范围，等格式化与业务改动一起提交后再开启该步骤。
+      - name: ruff format（保持 formatter 输出一致）
+        run: uv run ruff format . --check
 
       - name: mypy（strict）
         run: uv run mypy

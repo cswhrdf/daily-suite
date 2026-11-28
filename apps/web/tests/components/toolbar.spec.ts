@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -25,7 +25,10 @@ vi.mock('@/api/tags', () => ({
   remove: mocks.remove,
 }))
 
-function deferred<T>() {
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+} {
   let resolve!: (value: T | PromiseLike<T>) => void
   const promise = new Promise<T>((resolvePromise) => {
     resolve = resolvePromise
@@ -33,7 +36,10 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function mountToolbar(modelValue: number | null = null) {
+function mountToolbar(modelValue: number | null = null): {
+  store: ReturnType<typeof useTagsStore>
+  wrapper: VueWrapper
+} {
   const pinia: Pinia = createPinia()
   setActivePinia(pinia)
   const store = useTagsStore()

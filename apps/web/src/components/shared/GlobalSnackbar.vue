@@ -23,12 +23,7 @@ const visible = computed({
       <v-btn v-if="state.onAction !== null" variant="text" @click="runAction">
         {{ state.actionLabel }}
       </v-btn>
-      <v-btn
-        :aria-label="t('snackbar.dismiss')"
-        icon="mdi-close"
-        variant="text"
-        @click="dismiss"
-      />
+      <v-btn :aria-label="t('snackbar.dismiss')" icon="mdi-close" variant="text" @click="dismiss" />
     </template>
   </v-snackbar>
 </template>

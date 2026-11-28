@@ -57,7 +57,11 @@ function runAction(): void {
 }
 
 /** 全局提示的最小 API：成功、失败回滚与撤销。 */
-export function useSnackbar() {
+export function useSnackbar(): {
+  success: typeof showSuccess
+  rollback: typeof showRollbackError
+  undo: typeof showUndo
+} {
   return {
     success: showSuccess,
     rollback: showRollbackError,
@@ -66,7 +70,11 @@ export function useSnackbar() {
 }
 
 /** 仅供全局展示组件与测试读取的同一份响应式状态。 */
-export function useSnackbarState() {
+export function useSnackbarState(): {
+  state: typeof state
+  dismiss: () => void
+  runAction: () => void
+} {
   return {
     state,
     dismiss,

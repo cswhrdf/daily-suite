@@ -23,10 +23,7 @@ function resolveRoutePath(parentPath: string, path: string): string {
  *
  * 导航标题必须存在；缺少标题的标记路由被视为配置不完整，不进入导航。
  */
-export function collectNavItems(
-  routes: readonly RouteRecordRaw[],
-  parentPath = '',
-): NavItem[] {
+export function collectNavItems(routes: readonly RouteRecordRaw[], parentPath = ''): NavItem[] {
   return routes.flatMap((route) => {
     const to = resolveRoutePath(parentPath, route.path)
     const current =

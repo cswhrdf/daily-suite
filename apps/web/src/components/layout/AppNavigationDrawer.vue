@@ -13,12 +13,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <v-navigation-drawer
-    v-if="mdAndUp"
-    :aria-label="t('nav.label')"
-    permanent
-    width="280"
-  >
+  <v-navigation-drawer v-if="mdAndUp" :aria-label="t('nav.label')" permanent width="280">
     <v-list nav>
       <v-list-item
         v-for="item in items"

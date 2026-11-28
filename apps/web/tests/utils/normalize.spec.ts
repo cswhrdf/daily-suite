@@ -4,7 +4,7 @@ import { createRequestState } from '@/types/request'
 import { ids, itemsById, mutationPendingIds } from '@/utils/normalize'
 import { noteFixtures } from '../fixtures/entities'
 
-const keyFn = (entity: { id: string }) => entity.id
+const keyFn = (entity: { id: string }): string => entity.id
 
 describe('规范化工具', () => {
   it('itemsById 按 ID 索引实体，ids 保留输入顺序', () => {

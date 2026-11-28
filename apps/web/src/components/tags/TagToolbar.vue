@@ -42,7 +42,7 @@ onMounted(() => {
 
 <template>
   <div class="tag-toolbar-region">
-    <section class="tag-toolbar" :aria-label="t('tags.toolbar.label')">
+    <section :aria-label="t('tags.toolbar.label')" class="tag-toolbar">
       <tag-filter-menu
         :disabled="tagsStore.listRequest.status === 'loading'"
         :loading="tagsStore.listRequest.status === 'loading'"

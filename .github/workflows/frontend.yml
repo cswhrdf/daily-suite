@@ -6,7 +6,7 @@
 #     -> pnpm run lint      (pnpm -r -> eslint . --max-warnings 0)
 #     -> pnpm run lint:style(pnpm -r -> stylelint "src/**/*.{css,scss,vue}" --max-warnings 0)
 #     -> pnpm run typecheck (pnpm -r -> vue-tsc --noEmit)
-#     -> pnpm test          (pnpm -r -> vitest run)
+#     -> pnpm run test:coverage (pnpm -r -> vitest run --coverage，thresholds=100 硬门禁)
 #     -> pnpm audit
 #
 # 约束：
@@ -16,13 +16,11 @@
 #     workflow 名与 artifact 名聚合，改名会断开 Allure 报告链路。
 #   - Node 26 为根 package.json engines 要求；pnpm 版本取根 packageManager 字段。
 #   - npm registry 偶发抖动，install 步骤带有限次数重试（不掩盖真实失败）。
-#   - 前端覆盖率阈值暂不做硬门禁（Vitest 基础配置已就绪），
-#     待 Vitest coverage thresholds 定稿后再加 --coverage 门禁步骤。
+#   - 前端覆盖率已设 thresholds=100（apps/web/vite.config.ts），vitest 步骤跑 --coverage 作为硬门禁。
 #   - Allure：vitest（allure-vitest/reporter）与 Playwright E2E
 #     （allure-playwright）都写入 apps/web/allure-results，统一上传为
 #     frontend-allure-results，由 report.yml 与后端结果合并生成报告。
-#   - Playwright E2E 默认跳过（仓库变量 ENABLE_E2E=true 时启用）：
-#     启用后需先安装 chromium（playwright install --with-deps），
+#   - Playwright E2E 默认启用：先安装 chromium（playwright install --with-deps），
 #     浏览器下载走 npmmirror 镜像（PLAYWRIGHT_DOWNLOAD_HOST）。
 # =============================================================================
 name: Frontend CI
@@ -108,22 +106,19 @@ jobs:
       - name: typecheck（vue-tsc）
         run: pnpm run typecheck
 
-      - name: vitest
-        run: pnpm test
+      - name: vitest（覆盖率 100% 硬门禁）
+        run: pnpm run test:coverage
 
-      # ---- Playwright E2E（通过仓库变量 ENABLE_E2E 开关控制，默认跳过）--------
-      # 启用方式：Settings -> Variables 新增 ENABLE_E2E=true。
+      # ---- Playwright E2E（默认启用，用例走 mock，不依赖真实后端）--------
       # 用例与配置：apps/web/playwright.config.ts、apps/web/e2e/*.spec.ts；
-      # 结果写入 apps/web/allure-results（与 vitest 同目录，一并上传）。
+      # webServer 自动拉起 pnpm dev:mock；结果写入 apps/web/allure-results（与 vitest 同目录，一并上传）。
       - name: 安装 Playwright 浏览器（chromium，镜像加速）
-        if: ${{ vars.ENABLE_E2E == 'true' }}
         env:
           # 官方 CDN 在国内网络常超时，改用 npmmirror 的 playwright 镜像。
           PLAYWRIGHT_DOWNLOAD_HOST: https://cdn.npmmirror.com/binaries/playwright
         run: pnpm --filter @daily-suite/web exec playwright install --with-deps chromium
 
       - name: Playwright E2E
-        if: ${{ vars.ENABLE_E2E == 'true' }}
         run: pnpm --filter @daily-suite/web run e2e
 
       - name: pnpm audit（高危及以上阻断）

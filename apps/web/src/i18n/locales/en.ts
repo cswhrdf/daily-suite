@@ -81,7 +81,8 @@ const en = {
     },
     delete: {
       title: 'Delete this tag?',
-      message: 'You are about to delete “{name}”. This only removes associations; notes, to-dos, and events will not be deleted.',
+      message:
+        'You are about to delete “{name}”. This only removes associations; notes, to-dos, and events will not be deleted.',
       associations: 'All associated notes, to-dos, and events will be preserved.',
       cancel: 'Cancel',
       confirm: 'Delete tag',

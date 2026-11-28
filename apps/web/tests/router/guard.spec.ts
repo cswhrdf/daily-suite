@@ -32,7 +32,7 @@ function createRoute(overrides: Partial<RouteLocationNormalized>): RouteLocation
   }
 }
 
-function runGuard(to: RouteLocationNormalized) {
+function runGuard(to: RouteLocationNormalized): ReturnType<typeof authGuard> {
   return authGuard(to, createRoute({ name: 'from' }), () => {
     // 守卫使用返回值式 API，next 仅占位。
   })
