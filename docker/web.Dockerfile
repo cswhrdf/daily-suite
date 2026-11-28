@@ -21,7 +21,7 @@
 # =============================================================================
 
 # ---------- Stage 1：builder ----------
-FROM node:26-alpine AS builder
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS builder
 
 # Node 25+ 官方镜像不再内置 corepack，直接全局安装 package.json 锁定的 pnpm 版本。
 ARG PNPM_VERSION=12.21.0
@@ -43,7 +43,7 @@ COPY apps/web/ apps/web/
 RUN pnpm --filter @daily-suite/web run build
 
 # ---------- Stage 2：nginx ----------
-FROM nginx:1.30-alpine AS nginx
+FROM nginx:1.30-alpine@sha256:8eb04fe3b385090e9aa02961f77398ad09b6bf33ab07f6669a5bb7acce22c0d3 AS nginx
 
 # 用项目配置覆盖官方默认站点：/ 托管 dist、/api/ 与 /healthz 反代 backend。
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
