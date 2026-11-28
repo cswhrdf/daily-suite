@@ -43,7 +43,7 @@ COPY apps/web/ apps/web/
 RUN pnpm --filter @daily-suite/web run build
 
 # ---------- Stage 2：nginx ----------
-FROM nginx:1.30-alpine@sha256:8eb04fe3b385090e9aa02961f77398ad09b6bf33ab07f6669a5bb7acce22c0d3 AS nginx
+FROM nginx:1.31-alpine@sha256:7fc0fb4af7bf006aeb31aea88069976060f8f0a0a86b667126742cc17f4e31ae AS nginx
 
 # 用项目配置覆盖官方默认站点：/ 托管 dist、/api/ 与 /healthz 反代 backend。
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
