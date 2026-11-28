@@ -90,6 +90,311 @@ paths:
               schema:
                 $ref: '#/components/schemas/Echo'
           description: ''
+  /api/sticky-notes/:
+    get:
+      operationId: sticky_notes_list
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      parameters:
+      - in: query
+        name: is_archived
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: tag
+        schema:
+          type: integer
+      tags:
+      - sticky-notes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStickyNoteList'
+          description: ''
+    post:
+      operationId: sticky_notes_create
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      tags:
+      - sticky-notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickyNote'
+          description: ''
+  /api/sticky-notes/{id}/:
+    get:
+      operationId: sticky_notes_retrieve
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 便签 的 唯一整数值。
+        required: true
+      tags:
+      - sticky-notes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickyNote'
+          description: ''
+    put:
+      operationId: sticky_notes_update
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 便签 的 唯一整数值。
+        required: true
+      tags:
+      - sticky-notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StickyNote'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickyNote'
+          description: ''
+    patch:
+      operationId: sticky_notes_partial_update
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 便签 的 唯一整数值。
+        required: true
+      tags:
+      - sticky-notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStickyNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStickyNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStickyNote'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickyNote'
+          description: ''
+    delete:
+      operationId: sticky_notes_destroy
+      description: |-
+        便签的增删改查视图集，附带整体重排与转待办两个动作。
+
+        查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+        列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 便签 的 唯一整数值。
+        required: true
+      tags:
+      - sticky-notes
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/sticky-notes/{id}/convert-to-todo/:
+    post:
+      operationId: sticky_notes_convert_to_todo_create
+      description: |-
+        把便签复制成一条待办，便签本身保留。
+
+        ``due_at``/``priority``/``status`` 均可选，非法取值在写入前即返回 400；
+        便签的标签复制到待办上，来源便签写入 ``source_sticky_note`` 便于回查。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 便签 的 唯一整数值。
+        required: true
+      tags:
+      - sticky-notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickyNoteConvertToTodo'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StickyNoteConvertToTodo'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StickyNoteConvertToTodo'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StickyNoteConvertToTodoResult'
+          description: ''
+  /api/sticky-notes/reorder/:
+    post:
+      operationId: sticky_notes_reorder_create
+      description: |-
+        按 ``ordered_ids`` 的顺序整体重写当前用户未归档便签的 ``position``。
+
+        先把三类非法入参（重复 ID、数量不符、含他人 ID）全部校验完，再在单个事务里
+        写入，因此任一条校验失败都返回 400 且数据库中位置保持不变。
+      parameters:
+      - in: query
+        name: is_archived
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - in: query
+        name: tag
+        schema:
+          type: integer
+      tags:
+      - sticky-notes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StickyNoteReorder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StickyNoteReorder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StickyNoteReorder'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStickyNoteList'
+          description: ''
   /api/tags/:
     get:
       operationId: tags_list
@@ -301,26 +606,6 @@ components:
           readOnly: true
       required:
       - access
-    ColorEnum:
-      enum:
-      - '#C2410C'
-      - '#1867C0'
-      - '#217A46'
-      - '#8A5A00'
-      - '#BA1A1A'
-      - '#5E35B1'
-      - '#00838F'
-      - '#546E7A'
-      type: string
-      description: |-
-        * `#C2410C` - #C2410C
-        * `#1867C0` - #1867C0
-        * `#217A46` - #217A46
-        * `#8A5A00` - #8A5A00
-        * `#BA1A1A` - #BA1A1A
-        * `#5E35B1` - #5E35B1
-        * `#00838F` - #00838F
-        * `#546E7A` - #546E7A
     Echo:
       type: object
       description: 回显输入内容，用于验证 DRF 序列化器往返。
@@ -347,6 +632,29 @@ components:
       required:
       - password
       - username
+    PaginatedStickyNoteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StickyNote'
     PaginatedTagList:
       type: object
       required:
@@ -370,6 +678,58 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tag'
+    PatchedStickyNote:
+      type: object
+      description: |-
+        便签的读写序列化器。
+
+        写操作接收 ``tag_ids`` 主键列表，读操作返回 ``tags`` 摘要数组；
+        底色必须落在受控色板内，``position`` 与时间戳一律由服务端维护，
+        因此客户端即使传入也会被忽略。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: 标题
+          maxLength: 200
+        content:
+          type: string
+          title: 内容
+        color:
+          $ref: '#/components/schemas/StickyNoteColorEnum'
+        is_pinned:
+          type: boolean
+          title: 是否置顶
+        is_archived:
+          type: boolean
+          title: 是否归档
+        position:
+          type: integer
+          readOnly: true
+          title: 排序位置
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagSummary'
+          readOnly: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 更新时间
     PatchedTag:
       type: object
       description: |-
@@ -385,7 +745,7 @@ components:
           type: string
           maxLength: 50
         color:
-          $ref: '#/components/schemas/ColorEnum'
+          $ref: '#/components/schemas/TagColorEnum'
         created_at:
           type: string
           format: date-time
@@ -396,6 +756,139 @@ components:
           format: date-time
           readOnly: true
           title: 更新时间
+    PriorityEnum:
+      enum:
+      - low
+      - medium
+      - high
+      type: string
+      description: |-
+        * `low` - 低
+        * `medium` - 中
+        * `high` - 高
+    StatusEnum:
+      enum:
+      - pending
+      - in_progress
+      - done
+      type: string
+      description: |-
+        * `pending` - 待处理
+        * `in_progress` - 进行中
+        * `done` - 已完成
+    StickyNote:
+      type: object
+      description: |-
+        便签的读写序列化器。
+
+        写操作接收 ``tag_ids`` 主键列表，读操作返回 ``tags`` 摘要数组；
+        底色必须落在受控色板内，``position`` 与时间戳一律由服务端维护，
+        因此客户端即使传入也会被忽略。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: 标题
+          maxLength: 200
+        content:
+          type: string
+          title: 内容
+        color:
+          $ref: '#/components/schemas/StickyNoteColorEnum'
+        is_pinned:
+          type: boolean
+          title: 是否置顶
+        is_archived:
+          type: boolean
+          title: 是否归档
+        position:
+          type: integer
+          readOnly: true
+          title: 排序位置
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagSummary'
+          readOnly: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 更新时间
+      required:
+      - created_at
+      - id
+      - position
+      - tags
+      - updated_at
+    StickyNoteColorEnum:
+      enum:
+      - '#FFF0D9'
+      - '#EAF3FF'
+      - '#EAF5EC'
+      - '#F3F0ED'
+      type: string
+      description: |-
+        * `#FFF0D9` - #FFF0D9
+        * `#EAF3FF` - #EAF3FF
+        * `#EAF5EC` - #EAF5EC
+        * `#F3F0ED` - #F3F0ED
+    StickyNoteConvertToTodo:
+      type: object
+      description: |-
+        便签转待办的请求体。
+
+        三个字段均可选：缺省时沿用待办模型的默认状态与优先级，
+        截止时间按 ISO 8601 解析，非法取值返回中文字段错误。
+      properties:
+        due_at:
+          type: string
+          format: date-time
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+    StickyNoteConvertToTodoResult:
+      type: object
+      description: |-
+        便签转待办的响应体：原便签与新待办的完整序列化结果。
+
+        便于前端在同一个响应里刷新便签卡片状态并插入新待办，不必再发两次读请求。
+      properties:
+        sticky_note:
+          allOf:
+          - $ref: '#/components/schemas/StickyNote'
+          readOnly: true
+        todo:
+          allOf:
+          - $ref: '#/components/schemas/Todo'
+          readOnly: true
+      required:
+      - sticky_note
+      - todo
+    StickyNoteReorder:
+      type: object
+      description: 便签重排的请求体：``ordered_ids`` 为全量便签主键的有序列表。
+      properties:
+        ordered_ids:
+          type: array
+          items:
+            type: integer
+      required:
+      - ordered_ids
     Tag:
       type: object
       description: |-
@@ -411,7 +904,7 @@ components:
           type: string
           maxLength: 50
         color:
-          $ref: '#/components/schemas/ColorEnum'
+          $ref: '#/components/schemas/TagColorEnum'
         created_at:
           type: string
           format: date-time
@@ -427,6 +920,125 @@ components:
       - created_at
       - id
       - name
+      - updated_at
+    TagColorEnum:
+      enum:
+      - '#C2410C'
+      - '#1867C0'
+      - '#217A46'
+      - '#8A5A00'
+      - '#BA1A1A'
+      - '#5E35B1'
+      - '#00838F'
+      - '#546E7A'
+      type: string
+      description: |-
+        * `#C2410C` - #C2410C
+        * `#1867C0` - #1867C0
+        * `#217A46` - #217A46
+        * `#8A5A00` - #8A5A00
+        * `#BA1A1A` - #BA1A1A
+        * `#5E35B1` - #5E35B1
+        * `#00838F` - #00838F
+        * `#546E7A` - #546E7A
+    TagSummary:
+      type: object
+      description: |-
+        标签摘要序列化器。
+
+        只暴露前端渲染标签胶囊所需的三个字段，挂在业务实体的读取结果里，
+        避免读接口把整个标签对象（含时间戳）一并返回。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          title: 名称
+        color:
+          type: string
+          readOnly: true
+          title: 颜色
+      required:
+      - color
+      - id
+      - name
+    Todo:
+      type: object
+      description: |-
+        轻量待办序列化器。
+
+        本阶段只服务于便签转待办的创建与响应，待办自身的接口落地后会在本类上继续扩展；
+        ``completed_at`` 由 ``status`` 派生，属于服务端维护字段，故整体只读。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: 标题
+          maxLength: 200
+        description:
+          type: string
+          title: 描述
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: 截止时间
+        position:
+          type: integer
+          readOnly: true
+          title: 排序位置
+        parent:
+          type: integer
+          nullable: true
+          title: 父任务
+        source_sticky_note:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: 来源便签
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: 完成时间
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagSummary'
+          readOnly: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 更新时间
+      required:
+      - completed_at
+      - created_at
+      - id
+      - position
+      - source_sticky_note
+      - tags
+      - title
       - updated_at
   securitySchemes:
     cookieAuth:

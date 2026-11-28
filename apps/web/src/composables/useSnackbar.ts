@@ -35,6 +35,13 @@ function showSuccess(message: string): void {
   show(message, 'success', 3000)
 }
 
+/** 成功提示附带一个明确的后续导航动作。 */
+function showSuccessAction(message: string, actionLabel: string, onAction: () => void): void {
+  show(message, 'success', 6000)
+  state.actionLabel = actionLabel
+  state.onAction = onAction
+}
+
 /** 乐观更新失败并回滚后，用统一的错误样式告知用户。 */
 function showRollbackError(message: string): void {
   show(message, 'error', 6000)
@@ -59,11 +66,13 @@ function runAction(): void {
 /** 全局提示的最小 API：成功、失败回滚与撤销。 */
 export function useSnackbar(): {
   success: typeof showSuccess
+  successAction: typeof showSuccessAction
   rollback: typeof showRollbackError
   undo: typeof showUndo
 } {
   return {
     success: showSuccess,
+    successAction: showSuccessAction,
     rollback: showRollbackError,
     undo: showUndo,
   }

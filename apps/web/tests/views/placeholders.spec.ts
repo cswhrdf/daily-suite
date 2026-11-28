@@ -4,16 +4,9 @@ import { nextTick } from 'vue'
 
 import TagToolbar from '@/components/tags/TagToolbar.vue'
 import CalendarView from '@/views/CalendarView.vue'
-import StickyNotesView from '@/views/StickyNotesView.vue'
 import TodosView from '@/views/TodosView.vue'
 
 const cases = [
-  {
-    name: '便签',
-    component: StickyNotesView,
-    title: '便签',
-    description: '便签功能将在后续阶段提供。',
-  },
   {
     name: '待办',
     component: TodosView,

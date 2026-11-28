@@ -215,3 +215,10 @@ module = [
     "django_celery_results.*",
 ]
 ignore_missing_imports = true
+
+# django-filter 26.2 未附带 py.typed，PyPI 上也没有官方 stub 包；
+# 业务侧只用到 FilterSet / NumberFilter 两个稳定 API，故仅关闭该包的导入检查，
+# 其余包仍按 strict 模式校验。
+[[tool.mypy.overrides]]
+module = ["django_filters", "django_filters.*"]
+ignore_missing_imports = true

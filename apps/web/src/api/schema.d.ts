@@ -72,6 +72,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sticky-notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        get: operations["sticky_notes_list"];
+        put?: never;
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        post: operations["sticky_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sticky-notes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        get: operations["sticky_notes_retrieve"];
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        put: operations["sticky_notes_update"];
+        post?: never;
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        delete: operations["sticky_notes_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description 便签的增删改查视图集，附带整体重排与转待办两个动作。
+         *
+         *     查询集始终按当前登录用户过滤，访问他人便签在取对象阶段即返回 404；
+         *     列表未显式指定归档条件时只返回未归档便签，归档分组需带 ``is_archived=true``。
+         */
+        patch: operations["sticky_notes_partial_update"];
+        trace?: never;
+    };
+    "/api/sticky-notes/{id}/convert-to-todo/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description 把便签复制成一条待办，便签本身保留。
+         *
+         *     ``due_at``/``priority``/``status`` 均可选，非法取值在写入前即返回 400；
+         *     便签的标签复制到待办上，来源便签写入 ``source_sticky_note`` 便于回查。
+         */
+        post: operations["sticky_notes_convert_to_todo_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sticky-notes/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description 按 ``ordered_ids`` 的顺序整体重写当前用户未归档便签的 ``position``。
+         *
+         *     先把三类非法入参（重复 ID、数量不符、含他人 ID）全部校验完，再在单个事务里
+         *     写入，因此任一条校验失败都返回 400 且数据库中位置保持不变。
+         */
+        post: operations["sticky_notes_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tags/": {
         parameters: {
             query?: never;
@@ -148,18 +260,6 @@ export interface components {
         AccessToken: {
             readonly access: string;
         };
-        /**
-         * @description * `#C2410C` - #C2410C
-         *     * `#1867C0` - #1867C0
-         *     * `#217A46` - #217A46
-         *     * `#8A5A00` - #8A5A00
-         *     * `#BA1A1A` - #BA1A1A
-         *     * `#5E35B1` - #5E35B1
-         *     * `#00838F` - #00838F
-         *     * `#546E7A` - #546E7A
-         * @enum {string}
-         */
-        ColorEnum: "#C2410C" | "#1867C0" | "#217A46" | "#8A5A00" | "#BA1A1A" | "#5E35B1" | "#00838F" | "#546E7A";
         /** @description 回显输入内容，用于验证 DRF 序列化器往返。 */
         Echo: {
             message: string;
@@ -177,6 +277,21 @@ export interface components {
              */
             password: string;
         };
+        PaginatedStickyNoteList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["StickyNote"][];
+        };
         PaginatedTagList: {
             /** @example 123 */
             count: number;
@@ -193,15 +308,27 @@ export interface components {
             results: components["schemas"]["Tag"][];
         };
         /**
-         * @description 全局标签的读写序列化器。
+         * @description 便签的读写序列化器。
          *
-         *     名称唯一性只在当前用户范围内校验，跨用户可重名；
-         *     颜色必须落在受控色板内，非法取值返回中文字段错误。
+         *     写操作接收 ``tag_ids`` 主键列表，读操作返回 ``tags`` 摘要数组；
+         *     底色必须落在受控色板内，``position`` 与时间戳一律由服务端维护，
+         *     因此客户端即使传入也会被忽略。
          */
-        PatchedTag: {
+        PatchedStickyNote: {
             readonly id?: number;
-            name?: string;
-            color?: components["schemas"]["ColorEnum"];
+            /** 标题 */
+            title?: string;
+            /** 内容 */
+            content?: string;
+            color?: components["schemas"]["StickyNoteColorEnum"];
+            /** 是否置顶 */
+            is_pinned?: boolean;
+            /** 是否归档 */
+            is_archived?: boolean;
+            /** 排序位置 */
+            readonly position?: number;
+            readonly tags?: components["schemas"]["TagSummary"][];
+            tag_ids?: number[];
             /**
              * 创建时间
              * Format: date-time
@@ -219,10 +346,179 @@ export interface components {
          *     名称唯一性只在当前用户范围内校验，跨用户可重名；
          *     颜色必须落在受控色板内，非法取值返回中文字段错误。
          */
+        PatchedTag: {
+            readonly id?: number;
+            name?: string;
+            color?: components["schemas"]["TagColorEnum"];
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            readonly created_at?: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            readonly updated_at?: string;
+        };
+        /**
+         * @description * `low` - 低
+         *     * `medium` - 中
+         *     * `high` - 高
+         * @enum {string}
+         */
+        PriorityEnum: "low" | "medium" | "high";
+        /**
+         * @description * `pending` - 待处理
+         *     * `in_progress` - 进行中
+         *     * `done` - 已完成
+         * @enum {string}
+         */
+        StatusEnum: "pending" | "in_progress" | "done";
+        /**
+         * @description 便签的读写序列化器。
+         *
+         *     写操作接收 ``tag_ids`` 主键列表，读操作返回 ``tags`` 摘要数组；
+         *     底色必须落在受控色板内，``position`` 与时间戳一律由服务端维护，
+         *     因此客户端即使传入也会被忽略。
+         */
+        StickyNote: {
+            readonly id: number;
+            /** 标题 */
+            title?: string;
+            /** 内容 */
+            content?: string;
+            color?: components["schemas"]["StickyNoteColorEnum"];
+            /** 是否置顶 */
+            is_pinned?: boolean;
+            /** 是否归档 */
+            is_archived?: boolean;
+            /** 排序位置 */
+            readonly position: number;
+            readonly tags: components["schemas"]["TagSummary"][];
+            tag_ids?: number[];
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            readonly created_at: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `#FFF0D9` - #FFF0D9
+         *     * `#EAF3FF` - #EAF3FF
+         *     * `#EAF5EC` - #EAF5EC
+         *     * `#F3F0ED` - #F3F0ED
+         * @enum {string}
+         */
+        StickyNoteColorEnum: "#FFF0D9" | "#EAF3FF" | "#EAF5EC" | "#F3F0ED";
+        /**
+         * @description 便签转待办的请求体。
+         *
+         *     三个字段均可选：缺省时沿用待办模型的默认状态与优先级，
+         *     截止时间按 ISO 8601 解析，非法取值返回中文字段错误。
+         */
+        StickyNoteConvertToTodo: {
+            /** Format: date-time */
+            due_at?: string;
+            priority?: components["schemas"]["PriorityEnum"];
+            status?: components["schemas"]["StatusEnum"];
+        };
+        /**
+         * @description 便签转待办的响应体：原便签与新待办的完整序列化结果。
+         *
+         *     便于前端在同一个响应里刷新便签卡片状态并插入新待办，不必再发两次读请求。
+         */
+        StickyNoteConvertToTodoResult: {
+            readonly sticky_note: components["schemas"]["StickyNote"];
+            readonly todo: components["schemas"]["Todo"];
+        };
+        /** @description 便签重排的请求体：``ordered_ids`` 为全量便签主键的有序列表。 */
+        StickyNoteReorder: {
+            ordered_ids: number[];
+        };
+        /**
+         * @description 全局标签的读写序列化器。
+         *
+         *     名称唯一性只在当前用户范围内校验，跨用户可重名；
+         *     颜色必须落在受控色板内，非法取值返回中文字段错误。
+         */
         Tag: {
             readonly id: number;
             name: string;
-            color: components["schemas"]["ColorEnum"];
+            color: components["schemas"]["TagColorEnum"];
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            readonly created_at: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `#C2410C` - #C2410C
+         *     * `#1867C0` - #1867C0
+         *     * `#217A46` - #217A46
+         *     * `#8A5A00` - #8A5A00
+         *     * `#BA1A1A` - #BA1A1A
+         *     * `#5E35B1` - #5E35B1
+         *     * `#00838F` - #00838F
+         *     * `#546E7A` - #546E7A
+         * @enum {string}
+         */
+        TagColorEnum: "#C2410C" | "#1867C0" | "#217A46" | "#8A5A00" | "#BA1A1A" | "#5E35B1" | "#00838F" | "#546E7A";
+        /**
+         * @description 标签摘要序列化器。
+         *
+         *     只暴露前端渲染标签胶囊所需的三个字段，挂在业务实体的读取结果里，
+         *     避免读接口把整个标签对象（含时间戳）一并返回。
+         */
+        TagSummary: {
+            readonly id: number;
+            /** 名称 */
+            readonly name: string;
+            /** 颜色 */
+            readonly color: string;
+        };
+        /**
+         * @description 轻量待办序列化器。
+         *
+         *     本阶段只服务于便签转待办的创建与响应，待办自身的接口落地后会在本类上继续扩展；
+         *     ``completed_at`` 由 ``status`` 派生，属于服务端维护字段，故整体只读。
+         */
+        Todo: {
+            readonly id: number;
+            /** 标题 */
+            title: string;
+            /** 描述 */
+            description?: string;
+            status?: components["schemas"]["StatusEnum"];
+            priority?: components["schemas"]["PriorityEnum"];
+            /**
+             * 截止时间
+             * Format: date-time
+             */
+            due_at?: string | null;
+            /** 排序位置 */
+            readonly position: number;
+            /** 父任务 */
+            parent?: number | null;
+            /** 来源便签 */
+            readonly source_sticky_note: number | null;
+            /**
+             * 完成时间
+             * Format: date-time
+             */
+            readonly completed_at: string | null;
+            readonly tags: components["schemas"]["TagSummary"][];
+            tag_ids?: number[];
             /**
              * 创建时间
              * Format: date-time
@@ -326,6 +622,220 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Echo"];
+                };
+            };
+        };
+    };
+    sticky_notes_list: {
+        parameters: {
+            query?: {
+                is_archived?: boolean;
+                /** @description 用于排序结果的字段。 */
+                ordering?: string;
+                /** @description 分页结果集中的页码。 */
+                page?: number;
+                /** @description 搜索关键词。 */
+                search?: string;
+                tag?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStickyNoteList"];
+                };
+            };
+        };
+    };
+    sticky_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StickyNote"];
+                "application/x-www-form-urlencoded": components["schemas"]["StickyNote"];
+                "multipart/form-data": components["schemas"]["StickyNote"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StickyNote"];
+                };
+            };
+        };
+    };
+    sticky_notes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 便签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StickyNote"];
+                };
+            };
+        };
+    };
+    sticky_notes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 便签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StickyNote"];
+                "application/x-www-form-urlencoded": components["schemas"]["StickyNote"];
+                "multipart/form-data": components["schemas"]["StickyNote"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StickyNote"];
+                };
+            };
+        };
+    };
+    sticky_notes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 便签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sticky_notes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 便签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedStickyNote"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStickyNote"];
+                "multipart/form-data": components["schemas"]["PatchedStickyNote"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StickyNote"];
+                };
+            };
+        };
+    };
+    sticky_notes_convert_to_todo_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 便签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StickyNoteConvertToTodo"];
+                "application/x-www-form-urlencoded": components["schemas"]["StickyNoteConvertToTodo"];
+                "multipart/form-data": components["schemas"]["StickyNoteConvertToTodo"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StickyNoteConvertToTodoResult"];
+                };
+            };
+        };
+    };
+    sticky_notes_reorder_create: {
+        parameters: {
+            query?: {
+                is_archived?: boolean;
+                /** @description 用于排序结果的字段。 */
+                ordering?: string;
+                /** @description 分页结果集中的页码。 */
+                page?: number;
+                /** @description 搜索关键词。 */
+                search?: string;
+                tag?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StickyNoteReorder"];
+                "application/x-www-form-urlencoded": components["schemas"]["StickyNoteReorder"];
+                "multipart/form-data": components["schemas"]["StickyNoteReorder"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedStickyNoteList"];
                 };
             };
         };

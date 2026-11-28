@@ -44,6 +44,8 @@ describe('App', () => {
 
     // 自定义主题色来自 createVuetify 配置，而非 Vuetify 默认值。
     const theme = vuetify.theme.themes.value['light']
-    expect(theme?.colors.primary).toBe('#1867C0')
+    expect(theme?.colors.primary).toBe('#C2410C')
+    expect(theme?.colors.secondary).toBe('#1867C0')
+    expect(vuetify.theme.themes.value['dark']?.colors['on-primary']).toBe('#351505')
   })
 })
