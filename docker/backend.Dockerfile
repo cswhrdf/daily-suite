@@ -17,7 +17,7 @@
 # =============================================================================
 
 # ---------- Stage 1：builder ----------
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64 AS builder
 
 # uv 官方静态镜像里的二进制（版本与仓库本地 uv 对齐），避免构建期再经 pip 下载 uv。
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
@@ -38,7 +38,7 @@ COPY apps/backend/ ./
 RUN uv sync --locked --no-dev
 
 # ---------- Stage 2：runtime ----------
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.12-slim-bookworm@sha256:44cf1793efa7c7a476bb0f2cff81443f4a072c90c1cb127e2924933daa3e8c64 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
