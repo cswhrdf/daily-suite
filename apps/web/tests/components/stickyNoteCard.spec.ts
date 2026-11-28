@@ -21,6 +21,7 @@ describe('StickyNoteCard', () => {
     expect(wrapper.text()).toContain('牛奶、鸡蛋、燕麦')
     expect(wrapper.text()).toContain('置顶')
     expect(wrapper.text()).toContain('家庭')
+    expect(wrapper.find('.sticky-note-card-header').exists()).toBe(true)
     expect(wrapper.find('[aria-label="编辑便签“本周采购”"]').exists()).toBe(true)
     expect(wrapper.find('[aria-label="拖动便签“本周采购”排序"]').exists()).toBe(true)
     expect(wrapper.find('[aria-label="上移便签“本周采购”"]').exists()).toBe(true)
@@ -46,10 +47,15 @@ describe('StickyNoteCard', () => {
     ])
   })
 
-  it('普通便签使用纯文本状态，首项与末项禁用对应移动操作', async () => {
+  it('未置顶未归档的便签不渲染状态行并将编辑区置为首项，首项与末项禁用对应移动操作', async () => {
     const note = { ...plain, content: '', tags: [] }
     const first = mount(StickyNoteCard, { props: { note, index: 0, total: 2 } })
-    expect(first.text()).toContain('纯文本')
+    expect(first.find('.sticky-note-card-header').exists()).toBe(false)
+    expect(first.find('.sticky-note-card-status').exists()).toBe(false)
+    expect(first.find('.sticky-note-card > :first-child').classes()).toContain(
+      'sticky-note-card-edit',
+    )
+    expect(first.find('[data-test="sticky-note-drag-2"]').attributes('disabled')).toBeUndefined()
     expect(first.find('.sticky-note-card-content').exists()).toBe(false)
     expect(first.find('[aria-label="上移便签“维修电话”"]').attributes('disabled')).toBeDefined()
     expect(first.find('[aria-label="置顶便签“维修电话”"]').classes()).toContain(
@@ -70,6 +76,7 @@ describe('StickyNoteCard', () => {
 
     expect(wrapper.text()).toContain('无标题便签')
     expect(wrapper.text()).toContain('已归档')
+    expect(wrapper.find('.sticky-note-card-header').exists()).toBe(true)
     expect(wrapper.find('.sticky-note-card-status .sticky-note-pin-icon').exists()).toBe(false)
     await wrapper.find('[aria-label="恢复便签“无标题便签”"]').trigger('click')
     expect(wrapper.emitted('restore')).toEqual([[archived]])

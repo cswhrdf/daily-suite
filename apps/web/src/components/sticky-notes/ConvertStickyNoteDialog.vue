@@ -68,7 +68,7 @@ defineExpose({ close, confirm })
 
 <template>
   <v-dialog v-model="visible" :fullscreen="smAndDown" max-width="560" :persistent="saving">
-    <v-card :rounded="smAndDown ? '0' : 'xl'">
+    <v-card :rounded="smAndDown ? '0' : 'lg'">
       <v-card-title class="convert-sticky-note-dialog-header">
         <span>{{ t('stickyNotes.convert.title') }}</span>
         <v-btn

@@ -10,7 +10,12 @@ import AppErrorState from '@/components/shared/AppErrorState.vue'
 import AppSkeleton from '@/components/shared/AppSkeleton.vue'
 import TagChipList from '@/components/tags/TagChipList.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
-import { DEFAULT_TAG_COLOR, TAG_COLORS, type TagColor } from '@/constants/tagColors'
+import {
+  DEFAULT_TAG_COLOR,
+  TAG_COLOR_LABEL_KEYS,
+  TAG_COLORS,
+  type TagColor,
+} from '@/constants/tagColors'
 import { useTagsStore } from '@/stores/tags'
 
 const props = defineProps<{
@@ -59,6 +64,10 @@ const initialListError = computed(
 
 function colorStyle(tagColor: TagColor): CSSProperties {
   return { '--tag-color': tagColor }
+}
+
+function colorLabel(tagColor: TagColor): string {
+  return t(TAG_COLOR_LABEL_KEYS[tagColor])
 }
 
 function resetForm(): void {
@@ -184,7 +193,7 @@ watch(
     :persistent="saving || deleting"
     scrollable
   >
-    <v-card :rounded="smAndDown ? '0' : 'xl'">
+    <v-card :rounded="smAndDown ? '0' : 'lg'">
       <v-card-title class="tag-manage-dialog-header">
         <span>{{ t('tags.manage.title') }}</span>
         <v-btn
@@ -266,7 +275,7 @@ watch(
                 <v-btn
                   v-for="tagColor in TAG_COLORS"
                   :key="tagColor"
-                  :aria-label="t('tags.form.colorOption', { color: tagColor })"
+                  :aria-label="t('tags.form.colorOption', { color: colorLabel(tagColor) })"
                   :aria-pressed="color === tagColor"
                   class="tag-manage-dialog-color"
                   :class="{ 'tag-manage-dialog-color-selected': color === tagColor }"
@@ -276,12 +285,12 @@ watch(
                   @click="color = tagColor"
                 >
                   <span aria-hidden="true" class="tag-manage-dialog-swatch" />
-                  <span class="tag-manage-dialog-hex">{{ tagColor }}</span>
+                  <span class="tag-manage-dialog-color-label">{{ colorLabel(tagColor) }}</span>
                   <v-icon v-if="color === tagColor" aria-hidden="true" icon="mdi-check" size="16" />
                 </v-btn>
               </div>
               <p class="text-body-2 text-medium-emphasis mt-2 mb-0">
-                {{ t('tags.form.selectedColor', { color }) }}
+                {{ t('tags.form.selectedColor', { color: colorLabel(color) }) }}
               </p>
             </fieldset>
             <div class="tag-manage-dialog-form-actions">
@@ -310,7 +319,7 @@ watch(
     :persistent="deleting"
     @update:model-value="cancelDelete"
   >
-    <v-card rounded="xl">
+    <v-card rounded="lg">
       <v-card-title>{{ t('tags.delete.title') }}</v-card-title>
       <v-card-text>
         <p class="mb-2">
@@ -393,8 +402,7 @@ watch(
   border-radius: 50%;
 }
 
-.tag-manage-dialog-hex {
-  font-family: monospace;
+.tag-manage-dialog-color-label {
   font-size: 12px;
 }
 

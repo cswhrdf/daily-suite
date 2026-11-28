@@ -210,6 +210,33 @@ describe('TagFilterMenu', () => {
 })
 
 describe('TagManageDialog', () => {
+  it('颜色选项、已选颜色和无障碍名称使用本地化颜色名而非 HEX', async () => {
+    const { wrapper } = await mountDialog()
+    const options = [
+      { hex: '#C2410C', label: '橙色' },
+      { hex: '#1867C0', label: '蓝色' },
+      { hex: '#217A46', label: '绿色' },
+      { hex: '#8A5A00', label: '黄色' },
+      { hex: '#BA1A1A', label: '红色' },
+      { hex: '#5E35B1', label: '紫色' },
+      { hex: '#00838F', label: '青色' },
+      { hex: '#546E7A', label: '灰色' },
+    ]
+
+    for (const { hex, label } of options) {
+      const button = query(`[data-test="tag-color-${hex}"]`)
+      expect(button.textContent).toContain(label)
+      expect(button.textContent).not.toContain(hex)
+      expect(button.getAttribute('aria-label')).toBe(`使用颜色 ${label}`)
+    }
+    expect(document.body.textContent).toContain('已选颜色：橙色')
+
+    await click('[data-test="tag-color-#217A46"]')
+    expect(document.body.textContent).toContain('已选颜色：绿色')
+    expect(document.body.textContent).not.toContain('已选颜色：#217A46')
+    wrapper.unmount()
+  })
+
   it('新建发出服务端标签载荷，保存中禁用提交并拦截重复提交', async () => {
     const { wrapper } = await mountDialog()
     const request = deferred<Tag>()

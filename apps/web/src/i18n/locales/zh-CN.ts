@@ -8,6 +8,20 @@ const zhCN = {
   app: {
     title: 'Daily Suite',
   },
+  colors: {
+    orange: '橙色',
+    blue: '蓝色',
+    green: '绿色',
+    yellow: '黄色',
+    red: '红色',
+    purple: '紫色',
+    cyan: '青色',
+    gray: '灰色',
+    warmYellow: '暖黄',
+    lightBlue: '浅蓝',
+    lightGreen: '浅绿',
+    neutralGray: '中性灰',
+  },
   nav: {
     label: '主导航',
     home: '首页',
@@ -73,7 +87,6 @@ const zhCN = {
       untitled: '无标题便签',
       pinned: '置顶',
       archived: '已归档',
-      plainText: '纯文本',
       clickEdit: '点击编辑',
       edit: '编辑便签“{title}”',
       drag: '拖动便签“{title}”排序',

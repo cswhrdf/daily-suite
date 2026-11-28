@@ -50,6 +50,32 @@ beforeEach(() => {
 })
 
 describe('StickyNoteEditDialog', () => {
+  it('颜色按钮显示本地化颜色名，不在可见文字或无障碍名称中暴露 HEX', () => {
+    const wrapper = mount(StickyNoteEditDialog, {
+      props: { modelValue: true, note, tags: [...tagFixtures] },
+      attachTo: document.body,
+    })
+    const options = [
+      { hex: '#FFF0D9', label: '暖黄' },
+      { hex: '#EAF3FF', label: '浅蓝' },
+      { hex: '#EAF5EC', label: '浅绿' },
+      { hex: '#F3F0ED', label: '中性灰' },
+    ]
+
+    // Vuetify 的对话框内容会被 teleport 到 body，需从 document 查询真实 DOM。
+    for (const { hex, label } of options) {
+      const button = document.querySelector(`[aria-label="使用便签颜色 ${label}"]`)
+      if (!(button instanceof HTMLElement)) {
+        throw new Error(`找不到颜色按钮：${label}`)
+      }
+      expect(button.textContent).toContain(label)
+      expect(button.textContent).not.toContain(hex)
+    }
+    expect(document.body.textContent).not.toContain('#FFF0D9')
+    expect(document.body.textContent).not.toContain('#EAF3FF')
+    wrapper.unmount()
+  })
+
   it('干净状态直接关闭，未保存关闭需确认并可继续编辑或放弃', async () => {
     const wrapper = mount(StickyNoteEditDialog, {
       props: { modelValue: true, note, tags: [...tagFixtures] },
@@ -103,7 +129,8 @@ describe('StickyNoteEditDialog', () => {
     setInput('[data-test="sticky-note-edit-content"] textarea', '  新正文  ')
     await nextTick()
     const colors = wrapper.findAllComponents(VBtn)
-    const blue = colors.find((button) => button.attributes('aria-label') === '使用便签颜色 #EAF3FF')
+    const blue = colors.find((button) => button.attributes('aria-label') === '使用便签颜色 浅蓝')
+    expect(blue?.text()).toContain('浅蓝')
     await blue?.trigger('click')
     const autocomplete = wrapper.findComponent(VAutocomplete)
     autocomplete.vm.$emit('update:modelValue', [1, 2])

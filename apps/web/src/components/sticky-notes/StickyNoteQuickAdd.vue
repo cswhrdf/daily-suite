@@ -6,6 +6,7 @@ import type { Tag } from '@/api/tags'
 import type { StickyNoteInput } from '@/api/stickyNotes'
 import {
   DEFAULT_STICKY_NOTE_COLOR,
+  STICKY_NOTE_COLOR_LABEL_KEYS,
   STICKY_NOTE_COLORS,
   type StickyNoteColor,
 } from '@/constants/stickyNoteColors'
@@ -37,6 +38,10 @@ const shortcut = computed(() =>
 
 function colorStyle(noteColor: StickyNoteColor): CSSProperties {
   return { '--sticky-note-color': noteColor }
+}
+
+function colorLabel(noteColor: StickyNoteColor): string {
+  return t(STICKY_NOTE_COLOR_LABEL_KEYS[noteColor])
 }
 
 function submit(): void {
@@ -108,7 +113,7 @@ defineExpose({ reset, submit })
           <v-btn
             v-for="noteColor in STICKY_NOTE_COLORS"
             :key="noteColor"
-            :aria-label="t('stickyNotes.form.colorOption', { color: noteColor })"
+            :aria-label="t('stickyNotes.form.colorOption', { color: colorLabel(noteColor) })"
             :aria-pressed="color === noteColor"
             class="sticky-note-color-button"
             :class="{ 'sticky-note-color-button-selected': color === noteColor }"

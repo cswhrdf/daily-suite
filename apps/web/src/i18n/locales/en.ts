@@ -8,6 +8,20 @@ const en = {
   app: {
     title: 'Daily Suite',
   },
+  colors: {
+    orange: 'Orange',
+    blue: 'Blue',
+    green: 'Green',
+    yellow: 'Yellow',
+    red: 'Red',
+    purple: 'Purple',
+    cyan: 'Cyan',
+    gray: 'Gray',
+    warmYellow: 'Warm yellow',
+    lightBlue: 'Light blue',
+    lightGreen: 'Light green',
+    neutralGray: 'Neutral gray',
+  },
   nav: {
     label: 'Main navigation',
     home: 'Home',
@@ -74,7 +88,6 @@ const en = {
       untitled: 'Untitled note',
       pinned: 'Pinned',
       archived: 'Archived',
-      plainText: 'Plain text',
       clickEdit: 'Click to edit',
       edit: 'Edit note “{title}”',
       drag: 'Drag note “{title}” to reorder',

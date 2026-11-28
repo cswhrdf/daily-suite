@@ -52,7 +52,7 @@ const tagEntities = computed<Tag[]>(() =>
     :data-test="`sticky-note-card-${note.id}`"
     :style="cardStyle"
   >
-    <header class="sticky-note-card-header">
+    <header v-if="note.is_pinned || note.is_archived" class="sticky-note-card-header">
       <span v-if="note.is_pinned" class="sticky-note-card-status sticky-note-card-pinned-label">
         <v-icon aria-hidden="true" class="sticky-note-pin-icon" icon="mdi-pin" size="15" />
         {{ t('stickyNotes.card.pinned') }}
@@ -61,17 +61,6 @@ const tagEntities = computed<Tag[]>(() =>
         <v-icon aria-hidden="true" icon="mdi-archive" size="15" />
         {{ t('stickyNotes.card.archived') }}
       </span>
-      <span v-else class="sticky-note-card-status">{{ t('stickyNotes.card.plainText') }}</span>
-      <button
-        v-if="sortable"
-        :aria-label="t('stickyNotes.card.drag', { title: displayTitle })"
-        class="sticky-note-card-drag-handle"
-        :data-test="`sticky-note-drag-${note.id}`"
-        :disabled="busy"
-        type="button"
-      >
-        <v-icon aria-hidden="true" icon="mdi-drag" />
-      </button>
     </header>
 
     <button
@@ -87,6 +76,17 @@ const tagEntities = computed<Tag[]>(() =>
       <span class="sticky-note-card-date"
         >{{ updatedAt }} · {{ t('stickyNotes.card.clickEdit') }}</span
       >
+    </button>
+
+    <button
+      v-if="sortable"
+      :aria-label="t('stickyNotes.card.drag', { title: displayTitle })"
+      class="sticky-note-card-drag-handle"
+      :data-test="`sticky-note-drag-${note.id}`"
+      :disabled="busy"
+      type="button"
+    >
+      <v-icon aria-hidden="true" icon="mdi-drag" />
     </button>
 
     <tag-chip-list v-if="note.tags.length > 0" class="sticky-note-card-tags" :tags="tagEntities" />
@@ -158,6 +158,7 @@ const tagEntities = computed<Tag[]>(() =>
 
 <style scoped>
 .sticky-note-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -187,7 +188,6 @@ const tagEntities = computed<Tag[]>(() =>
 }
 
 .sticky-note-card-header {
-  justify-content: space-between;
   min-height: 26px;
 }
 
@@ -212,6 +212,10 @@ const tagEntities = computed<Tag[]>(() =>
 }
 
 .sticky-note-card-drag-handle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
   display: grid;
   width: 32px;
   height: 32px;
@@ -236,7 +240,6 @@ const tagEntities = computed<Tag[]>(() =>
 }
 
 .sticky-note-card-edit {
-  padding: 0;
   color: inherit;
   text-align: start;
   cursor: text;

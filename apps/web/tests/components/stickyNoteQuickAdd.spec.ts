@@ -45,6 +45,10 @@ describe('StickyNoteQuickAdd', () => {
     setInput(wrapper, '[data-test="sticky-note-quick-title"] input', '  临时标题  ')
     setInput(wrapper, '[data-test="sticky-note-quick-content"] textarea', '  临时正文  ')
     await wrapper.find('[data-test="sticky-note-color-#EAF3FF"]').trigger('click')
+    expect(wrapper.find('[data-test="sticky-note-color-#EAF3FF"]').attributes('aria-label')).toBe(
+      '使用便签颜色 浅蓝',
+    )
+    expect(wrapper.text()).not.toContain('#EAF3FF')
     const autocomplete = wrapper.findComponent(VAutocomplete)
     autocomplete.vm.$emit('update:modelValue', [2])
     await nextTick()

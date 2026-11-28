@@ -3,9 +3,13 @@ import { computed, ref, watch, type CSSProperties } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 
-import type { Tag } from '@/api/tags'
 import type { StickyNote, StickyNoteInput } from '@/api/stickyNotes'
-import { STICKY_NOTE_COLORS, type StickyNoteColor } from '@/constants/stickyNoteColors'
+import type { Tag } from '@/api/tags'
+import {
+  STICKY_NOTE_COLOR_LABEL_KEYS,
+  STICKY_NOTE_COLORS,
+  type StickyNoteColor,
+} from '@/constants/stickyNoteColors'
 
 const props = withDefaults(
   defineProps<{
@@ -54,6 +58,10 @@ const visible = computed({
 
 function colorStyle(noteColor: StickyNoteColor): CSSProperties {
   return { '--sticky-note-color': noteColor }
+}
+
+function colorLabel(noteColor: StickyNoteColor): string {
+  return t(STICKY_NOTE_COLOR_LABEL_KEYS[noteColor])
 }
 
 function reset(): void {
@@ -112,7 +120,7 @@ defineExpose({ cancelDiscard, confirmDiscard, isDirty, requestClose, reset, subm
     :persistent="saving"
     scrollable
   >
-    <v-card :rounded="smAndDown ? '0' : 'xl'">
+    <v-card :rounded="smAndDown ? '0' : 'lg'">
       <v-card-title class="sticky-note-edit-dialog-header">
         <span>{{ t('stickyNotes.edit.title') }}</span>
         <v-btn
@@ -150,7 +158,7 @@ defineExpose({ cancelDiscard, confirmDiscard, isDirty, requestClose, reset, subm
               <v-btn
                 v-for="noteColor in STICKY_NOTE_COLORS"
                 :key="noteColor"
-                :aria-label="t('stickyNotes.form.colorOption', { color: noteColor })"
+                :aria-label="t('stickyNotes.form.colorOption', { color: colorLabel(noteColor) })"
                 :aria-pressed="color === noteColor"
                 class="sticky-note-edit-dialog-color"
                 :class="{ 'sticky-note-edit-dialog-color-selected': color === noteColor }"
@@ -159,7 +167,7 @@ defineExpose({ cancelDiscard, confirmDiscard, isDirty, requestClose, reset, subm
                 @click="color = noteColor"
               >
                 <span aria-hidden="true" class="sticky-note-edit-dialog-swatch" />
-                <span>{{ noteColor }}</span>
+                <span>{{ colorLabel(noteColor) }}</span>
                 <v-icon v-if="color === noteColor" aria-hidden="true" icon="mdi-check" size="16" />
               </v-btn>
             </div>
@@ -198,7 +206,7 @@ defineExpose({ cancelDiscard, confirmDiscard, isDirty, requestClose, reset, subm
   </v-dialog>
 
   <v-dialog v-model="confirmOpen" max-width="440">
-    <v-card rounded="xl">
+    <v-card rounded="lg">
       <v-card-title>{{ t('stickyNotes.edit.discardTitle') }}</v-card-title>
       <v-card-text>{{ t('stickyNotes.edit.discardMessage') }}</v-card-text>
       <v-card-actions>
@@ -236,7 +244,6 @@ defineExpose({ cancelDiscard, confirmDiscard, isDirty, requestClose, reset, subm
 
 .sticky-note-edit-dialog-color {
   color: #20242b;
-  font-family: monospace;
   font-size: 12px;
   background: var(--sticky-note-color);
 }
