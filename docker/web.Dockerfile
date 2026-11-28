@@ -13,13 +13,15 @@
 #     绑定 80，因此 master 与 worker 进程统一以 nginx 用户运行（镜像末尾 USER nginx）。
 #     为此把官方 nginx.conf 的 pid 路径改到 /tmp，并把缓存目录与站点目录 chown 给
 #     nginx；无需 CAP_NET_BIND_SERVICE，也不必改用 8080 端口。
-#   - digest：基础镜像固定到具体版本 tag；TODO(上线前) 换成 tag@sha256:<digest>。
+#   - 基础镜像：FROM 行刻意写成字面量（不引入 ARG 变量），它是唯一事实来源；
+#     Security Scan 的 trivy-image 矩阵由 .github/scripts/base_images.py 从
+#     docker/backend.Dockerfile 与 docker/web.Dockerfile 的 FROM 行实时派生；
+#     Renovate 按 docker:pinDigests 自动补 `@sha256:<digest>` 并持续更新 digest，
+#     从而捕获上游「tag 不变但镜像被重建」的发布。
 # =============================================================================
 
-ARG NODE_VERSION=26
-
 # ---------- Stage 1：builder ----------
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM node:26-alpine AS builder
 
 # Node 25+ 官方镜像不再内置 corepack，直接全局安装 package.json 锁定的 pnpm 版本。
 ARG PNPM_VERSION=12.21.0

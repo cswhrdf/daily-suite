@@ -57,6 +57,14 @@
 - **登录端点必须带尾斜杠** `/api/auth/login/`，不带会 301，浏览器把 POST 降级成 GET 得到 405。
 - **pnpm 需在 PATH**（本机 WSL 若未装，参考 `.vscode/tasks.json` 里的绝对路径）；安装必须 `--frozen-lockfile`。
 
+## 基础镜像更新自动化
+
+- **单一事实来源**：`docker/backend.Dockerfile` 与 `docker/web.Dockerfile` 的 `FROM` 行是基础镜像唯一来源。`security.yml` 的 `trivy-image` 矩阵不再手写，由 `base-images` job 调用 `.github/scripts/base_images.py` 解析 `FROM` 后经 `fromJSON` 注入；改镜像只需改 Dockerfile，workflow 自动跟随。
+- **`FROM` 必须是字面量**：不要写成 `python:${PYTHON_VERSION}-slim-bookworm` 这类变量形式，否则自动加 digest 的工具无法可靠改写。版本升级直接改 `FROM` 行（由 Renovate 开 PR）。
+- **Renovate 负责 docker**：`renovate.json` 只启用 `dockerfile` manager，`docker:pinDigests` 会把 `FROM` 固定为 `tag@sha256:<digest>` 并持续更新 digest，从而捕获「tag 不变但上游重建镜像」的场景。`docker/caddy.Dockerfile`、`# syntax=` 引用的 `docker/dockerfile`、`COPY --from` 的 uv 镜像已显式关闭，保持人工维护。
+- **与 Dependabot 分工**：Dependabot 继续管 uv / npm / github-actions，`dependabot-auto-approve.yml` 的兼容性评分门禁不变；Renovate PR 的 actor 不是 `dependabot[bot]`，因此不会被自动 approve/merge，需人工评审。
+- **本地校验**：`python3 .github/scripts/base_images.py`（列出将扫描的镜像）、`python3 -m unittest discover -s .github/scripts -p "test_*.py" -v`（解析逻辑单测）。
+
 ## 计划文档约束
 
 项目里 `PLAN*.md` 仅用于计划与进度追踪，**不是代码/配置/构建的事实来源**。任何源代码、配置、Dockerfile、CI、注释、日志都不得引用计划文档的内容（如「阶段 N」「PLAN」字样）。正式约定写进源码、配置或本文件，不能只存在于计划文档里。
@@ -66,3 +74,4 @@
 - 后端配置：`apps/backend/config/settings/*.py`；认证：`apps/backend/config/auth_views.py`、`auth_cookies.py`、`auth_serializers.py`；路由：`apps/backend/config/urls.py`
 - 前端：`apps/web/src/`（`api/http.ts`、`stores/auth.ts`、`router/guard.ts`、`views/LoginView.vue`）；`apps/web/vite.config.ts`
 - 部署：`docker-compose.yml`、`docker-compose.infra.yml`、`docker/{nginx.conf, Caddyfile, caddy.Dockerfile, backend.Dockerfile, web.Dockerfile}`
+- 基础镜像自动化：`renovate.json`、`.github/scripts/base_images.py`、`.github/workflows/security.yml`

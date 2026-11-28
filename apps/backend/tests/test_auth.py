@@ -135,6 +135,37 @@ def test_refresh_rotates_token_and_blacklists_old_one(client: Client) -> None:
     assert replay.status_code == 401
 
 
+@pytest.mark.django_db
+def test_refresh_without_rotation_keeps_existing_cookie(
+    client: Client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """关闭轮换时刷新只下发 Access Token，不重写 Refresh Cookie。
+
+    ``no_rotation_settings`` 只影响 ``settings.SIMPLE_JWT``（``get_refresh_cookie`` 从这里读
+    Cookie 名）。simplejwt 的 ``serializers`` 模块在导入时就绑定了 ``api_settings`` 对象，
+    仅用 ``override_settings`` 不会影响它，因此还要改写该对象上的轮换开关。
+    """
+    user = create_user()
+    raw_refresh = refresh_token_of(login(client))
+    no_rotation_settings = {**settings.SIMPLE_JWT, "ROTATE_REFRESH_TOKENS": False}
+
+    set_refresh_cookie(client, raw_refresh)
+    with override_settings(SIMPLE_JWT=no_rotation_settings):
+        # 直接按路径改写序列化器持有的那个 ``api_settings`` 对象上的轮换开关。
+        monkeypatch.setattr(
+            "rest_framework_simplejwt.serializers.api_settings.ROTATE_REFRESH_TOKENS",
+            False,
+        )
+        response = client.post(reverse("auth-refresh"))
+
+    assert response.status_code == 200
+    claims = _decode_access_token(str(response.json()["access"]))
+    assert str(claims["user_id"]) == str(user.pk)
+    # 未轮换时 validated_data 不含 refresh 键，视图不应回写 Cookie。
+    assert COOKIE_NAME not in response.cookies
+
+
 def test_refresh_requires_cookie(client: Client) -> None:
     response = client.post(reverse("auth-refresh"))
 

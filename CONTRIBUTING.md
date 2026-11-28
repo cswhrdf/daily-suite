@@ -42,10 +42,11 @@ CI 会以相同门禁校验（见下节），任一项失败即阻断合并。
 | `backend.yml`（Backend CI） | 改动 `apps/backend/**` 的推送（`main`）/PR，可手动 | `uv sync --locked --all-groups` → `ruff check` → `mypy`（strict）→ `pytest`（100% 覆盖率门禁，产出 Allure 结果）→ `pip-audit`（OSV，`--strict` 有洞即拦）→ `bandit`（medium 及以上）→ `deptry`（硬门禁）。附带 `postgres:19-alpine` service 容器 |
 | `frontend.yml`（Frontend CI） | 改动 `apps/web/**`、锁文件、根 `package.json` 的推送（`main`）/PR，可手动 | 仓库根 `pnpm install --frozen-lockfile` → eslint → stylelint → vue-tsc → vitest（Allure 结果）→ Playwright E2E（仅当仓库变量 `ENABLE_E2E=true`）→ `pnpm audit --audit-level=high` |
 | `report.yml`（Allure Report） | Backend CI / Frontend CI 运行结束后（`workflow_run`），可手动 | 下载前后端 `allure-results` → 合并到同一目录 → `allure generate`（Allure 3，Node 运行时，无需 Java）→ 上传 `allure-report` artifact（保留 30 天）。上游失败也出报告，被取消的运行不处理 |
-| `security.yml`（Security Scan） | 推送 `main`、依赖或 `docker/**` 变更的 PR、每周一 03:00 UTC、手动 | Trivy `fs`（漏洞 + secret + IaC）与 `image`（`python:3.12-slim-bookworm`、`nginx:1.30-alpine`，与 Dockerfile 同步）、gitleaks 扫完整 git 历史；命中即失败 |
+| `security.yml`（Security Scan） | 推送 `main`、依赖或 `docker/**` 变更的 PR、每周一 03:00 UTC、手动 | Trivy `fs`（漏洞 + secret + IaC）与 `image`（镜像列表由 `base-images` job 从 Dockerfile 的 `FROM` 行派生）、gitleaks 扫完整 git 历史；命中即失败 |
 | `dependency-review.yml` | PR → `main` | 只看本 PR 新引入/升级的依赖，`high` 及以上阻断；豁免写在 `.github/dependency-review-config.yml`。public 免费，私有仓库需 GitHub Code Security |
 | `dependabot-auto-approve.yml` | `dependabot[bot]` 的 PR → `main` | 读兼容性评分：评分 ≥ 阈值且非 major 时自动 approve 并开启 squash auto-merge，其余保持人工审核 |
 | `dependabot.yml` | 每周一 04:00（Asia/Shanghai） | 更新 uv（`/apps/backend`）、npm（`/`，覆盖 pnpm workspace）、github-actions（`/`）；minor + patch 分组，major 单独开 PR；typescript 的 major 暂忽略 |
+| `renovate.json`（Renovate App） | 每周一 05:00 前（Asia/Shanghai） | 只启用 `dockerfile` manager：`docker:pinDigests` 把 `docker/backend.Dockerfile`、`docker/web.Dockerfile` 的 `FROM` 固定为 `tag@sha256:<digest>` 并持续更新 digest；不改 npm/pip/actions；PR 需人工评审（不会被 dependabot 自动审批命中） |
 
 ### 仓库侧需配置的 Secrets / Variables
 
@@ -61,6 +62,21 @@ CI 会以相同门禁校验（见下节），任一项失败即阻断合并。
 
 `GITLEAKS_LICENSE` 仅当改用 `gitleaks/gitleaks-action` 时才需要；当前用社区版 CLI 镜像，无需配置。
 
+`renovate.json` 由 Renovate App 读取，不需要仓库 Secret；需在 GitHub 上安装 Renovate App 并授权本仓库（见下方「基础镜像更新」）。
+
+### 基础镜像更新（Renovate）
+
+- `docker/backend.Dockerfile` 与 `docker/web.Dockerfile` 的 `FROM` 行必须保持字面量（不要用 `${VAR}` 拼 tag）；它们是 Trivy 镜像矩阵的唯一来源，`security.yml` 里的 `base-images` job 会自动解析。
+- Renovate App 安装后按 `renovate.json` 运行：`docker:pinDigests` 首次会把 `FROM` 固定为 `tag@sha256:<digest>`，之后上游重建同一 tag 也会以「digest 更新」PR 的形式出现。
+- Renovate PR 不被 `dependabot-auto-approve.yml` 处理（只匹配 `dependabot[bot]`），需要人工评审后合并。
+
+首次接入步骤：
+
+1. 打开 <https://github.com/apps/renovate>，Install 并授权 `cswhrdf/daily-suite`（public 仓库免费）。
+2. 安装后 Renovate 直接读取仓库根 `renovate.json`；若仍出现 `Configure Renovate` onboarding PR（已有配置时通常不会），确认其内容与仓库配置一致后合并即可。
+3. 首次运行会创建 `Dependency Dashboard` issue，勾选其中的 “Check this box to trigger a Renovate run” 可立即触发，无需等到周一。
+4. 首次 PR 预期是 `chore(docker) Update python:3.12-slim-bookworm digest ...` 一类，只改 Dockerfile 的 `FROM`；合并后 `security.yml` 的 `base-images` 会自动把它带进 Trivy 扫描。
+
 ### 权限与仓库设置注意点
 
 - workflow 默认 `permissions: contents: read`。Trivy 结果若要进 Security 标签页，需给 `security.yml` 加 `security-events: write` 并补 SARIF 上传步骤（私有仓库还需 GitHub Code Security）；当前只用退出码让流水线失败。
@@ -70,6 +86,8 @@ CI 会以相同门禁校验（见下节），任一项失败即阻断合并。
 ### 本地能验证什么
 
 - 能：YAML 语法（如 `python -c "import yaml; yaml.safe_load(open('.github/workflows/backend.yml'))"`），以及各门禁命令本地实跑。
+- 能：基础镜像矩阵派生：`python3 .github/scripts/base_images.py`（列出镜像）与 `python3 -m unittest discover -s .github/scripts -p "test_*.py" -v`（解析逻辑单测）。
+- 可选：Renovate 本地演练 `LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup`（需要访问 Docker Hub，只查不写）。
 - 不能：GitHub Actions 的运行环境（service 容器、artifact、Secrets 语义），因此「CI 全绿」只能推送后由 GitHub 验证。
 
 ## 提交规范
