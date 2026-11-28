@@ -107,14 +107,16 @@ DJANGO_SETTINGS_MODULE = "config.settings.test"
 pythonpath = ["."]
 testpaths = ["tests"]
 # 覆盖率随测试一起跑，低于 100% 直接判失败。
-addopts = "-ra --cov=config --cov-fail-under=100"
+# 度量范围同时覆盖 config（配置/认证）与 toolkit（业务应用）。
+addopts = "-ra --cov=config --cov=toolkit --cov-fail-under=100"
 
 # ---------- uv 包索引 ----------
 # 不显式声明 [[tool.uv.index]]：uv 默认即使用官方 PyPI（https://pypi.org/simple），
 # 保证 lock 中所有包都解析自官方源，避免使用镜像源带来的同步延迟与来源不一致。
 
 [tool.coverage.run]
-source = ["config"]
+# 度量范围：config（配置与认证装配）与 toolkit（业务应用）。
+source = ["config", "toolkit"]
 # 分支覆盖同样计入：只有行覆盖 100% 不够，条件分支必须都走到。
 branch = true
 # 下列文件均为脚手架模板/运行时装配代码，不含可测业务逻辑，故排除：
@@ -174,7 +176,8 @@ ignore = [
 "tests/**" = ["D103", "INP001", "PLR2004", "S101"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config"]
+# 本地应用与 config 同为第一方包，避免 isort 把 toolkit 判成第三方而单独分组。
+known-first-party = ["config", "toolkit"]
 
 # ---------- mypy / django-stubs ----------
 [tool.mypy]
@@ -182,7 +185,8 @@ python_version = "3.12"
 # 一次性启用全套严格选项（等价于下方逐项开启，故不再重复列出）。
 strict = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
-files = ["config", "tests"]
+# 类型检查范围：config（配置与认证）、toolkit（业务应用）与 tests。
+files = ["config", "toolkit", "tests"]
 
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
@@ -194,4 +198,15 @@ ignore_missing_imports = true
 # celery 未随包发布 py.typed，strict 模式下按第三方无类型库处理。
 [[tool.mypy.overrides]]
 module = ["celery", "celery.*"]
+ignore_missing_imports = true
+
+# django-celery-beat / django-celery-results 同样未发布 py.typed：
+# django-stubs 插件解析 INSTALLED_APPS 里的模型时会尝试分析它们，需一并豁免。
+[[tool.mypy.overrides]]
+module = [
+    "django_celery_beat",
+    "django_celery_beat.*",
+    "django_celery_results",
+    "django_celery_results.*",
+]
 ignore_missing_imports = true

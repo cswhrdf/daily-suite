@@ -1,8 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it } from 'vitest'
 
-import i18n from '@/i18n'
-import vuetify from '@/plugins/vuetify'
 import HomeView from '@/views/HomeView.vue'
 
 import { componentAxeOptions, expectNoA11yViolations } from './axe-helper'
@@ -14,7 +12,7 @@ import { componentAxeOptions, expectNoA11yViolations } from './axe-helper'
 describe('HomeView 可访问性', () => {
   it('渲染结果无 axe 违规', async () => {
     const wrapper = mount(HomeView, {
-      global: { plugins: [vuetify, i18n] },
+      // Vuetify 与 i18n 由全局 setup 注入。
       // axe 只能扫描挂载在 document 上的节点，默认的游离容器会被跳过。
       attachTo: document.body,
     })

@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import App from '@/App.vue'
 import { setAccessToken } from '@/api/token'
-import i18n from '@/i18n'
 import vuetify from '@/plugins/vuetify'
 import router from '@/router'
 
@@ -24,8 +23,8 @@ describe('App', () => {
 
     const wrapper = mount(App, {
       global: {
-        // 视图文案来自 i18n（默认 zh-CN），缺失该插件会导致 $t 不可用。
-        plugins: [vuetify, i18n, pinia, router],
+        // Vuetify 与 i18n 由全局 setup 注入，这里仅补充认证状态和路由。
+        plugins: [pinia, router],
       },
     })
     await flushPromises()

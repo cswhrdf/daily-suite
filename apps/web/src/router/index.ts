@@ -5,9 +5,34 @@ import { authGuard } from './guard'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('../views/HomeView.vue'),
+    component: () => import('../layouts/DefaultLayout.vue'),
     meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: () => import('../views/HomeView.vue'),
+        meta: { requiresAuth: true, title: 'nav.home', showInNav: true },
+      },
+      {
+        path: 'sticky-notes',
+        name: 'sticky-notes',
+        component: () => import('../views/StickyNotesView.vue'),
+        meta: { requiresAuth: true, title: 'nav.stickyNotes', showInNav: true },
+      },
+      {
+        path: 'todos',
+        name: 'todos',
+        component: () => import('../views/TodosView.vue'),
+        meta: { requiresAuth: true, title: 'nav.todos', showInNav: true },
+      },
+      {
+        path: 'calendar',
+        name: 'calendar',
+        component: () => import('../views/CalendarView.vue'),
+        meta: { requiresAuth: true, title: 'nav.calendar', showInNav: true },
+      },
+    ],
   },
   {
     path: '/login',

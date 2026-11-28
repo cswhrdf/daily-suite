@@ -17,7 +17,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
 from config.auth_views import LoginView, LogoutView, RefreshView
@@ -34,4 +34,8 @@ urlpatterns = [
     path("api/auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("api/echo/", EchoView.as_view(), name="echo"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    # 业务路由统一挂在 /api/ 下：toolkit 的 DefaultRouter 会为每个注册的 ViewSet
+    # 生成带尾斜杠的标准路由（与 APPEND_SLASH 行为一致）。
+    # 放在最后，先匹配上面更具体的认证与 schema 路径，避免被路由根视图抢先。
+    path("api/", include("toolkit.urls")),
 ]

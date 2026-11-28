@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     # 前者由 django-celery-beat 提供 admin 可编辑的调度表，后者由 results 后端建表。
     "django_celery_beat",
     "django_celery_results",
+    # 本地应用：承载标签、便签、待办、日程等业务实体的应用。
+    "toolkit",
 ]
 
 MIDDLEWARE = [
@@ -237,12 +239,21 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    # 全局默认要求登录：业务视图不逐个声明权限，匿名访问一律 401。
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # 过滤链依次执行：先按字段精确过滤，再按 search 关键字模糊搜索，最后按 ordering 排序。
+    # SearchFilter 默认读取 DRF 的 SEARCH_PARAM（search），OrderingFilter 读取 ordering。
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ],
+    # 列表接口统一按页码分页，响应结构固定为 count/next/previous/results；
+    # page_size 可在具体视图上通过 pagination_class 覆盖。
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -284,4 +295,8 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": "/api",
+    # 全局安全方案：前端把 Access Token 放在 Authorization: Bearer <token> 请求头里。
+    # scheme 名 jwtAuth 由 drf-spectacular 依据 simplejwt 的 JWTAuthentication 自动生成，
+    # 此处只声明「默认需要该方案」，避免每个视图重复标注导致 schema 校验告警。
+    "SECURITY": [{"jwtAuth": []}],
 }

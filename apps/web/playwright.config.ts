@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
-// E2E 与开发服务器共用 5173 端口（与 vite.config.ts 的 server.port、.vscode/launch.json 一致）。
-const PORT = '5173'
+// E2E 与开发服务器共用 5400 端口（与 vite.config.ts 的 server.port、.vscode/launch.json 一致）。
+const PORT = '5400'
 const BASE_URL = `http://127.0.0.1:${PORT}`
 
 const isCI = process.env['CI'] === 'true'

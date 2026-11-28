@@ -7,6 +7,10 @@ import { useAuthStore } from '@/stores/auth'
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
+    /** 导航标题的 i18n key。 */
+    title?: string
+    /** 是否进入由路由配置派生的主导航。 */
+    showInNav?: boolean
   }
 }
 

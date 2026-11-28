@@ -34,7 +34,7 @@ export function toVuetifyLocale(locale: string): string {
 }
 
 const i18n = createI18n({
-  // Composition API 模式：模板里可直接 `$t('key')`，脚本里用 `useI18n()`。
+  // Composition API 模式：模板里可直接用 $t，脚本里用 useI18n()。
   legacy: false,
   locale: DEFAULT_LOCALE,
   fallbackLocale: DEFAULT_LOCALE,
