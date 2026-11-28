@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { toApiError } from '@/api/errors'
+import { ApiError, toApiError } from '@/api/errors'
 
 function axiosStatusError(status: number): AxiosError {
   const config: InternalAxiosRequestConfig = { headers: new AxiosHeaders() }
@@ -14,9 +14,25 @@ function axiosStatusError(status: number): AxiosError {
   })
 }
 
+function expectApiError(
+  actual: ApiError,
+  expected: {
+    kind: ApiError['kind']
+    i18nKey: string
+    message: string
+    status: number | null
+  },
+): void {
+  expect(actual).toBeInstanceOf(ApiError)
+  expect(actual.kind).toBe(expected.kind)
+  expect(actual.i18nKey).toBe(expected.i18nKey)
+  expect(actual.message).toBe(expected.message)
+  expect(actual.status).toBe(expected.status)
+}
+
 describe('toApiError', () => {
   it('把无响应的 Axios 异常归为网络错误', () => {
-    expect(toApiError(new AxiosError('offline', 'ERR_NETWORK'))).toEqual({
+    expectApiError(toApiError(new AxiosError('offline', 'ERR_NETWORK')), {
       kind: 'network',
       i18nKey: 'apiErrors.network',
       message: '网络连接失败，请检查网络后重试。',
@@ -35,7 +51,7 @@ describe('toApiError', () => {
     [500, 'server', 'apiErrors.server', '服务暂时不可用，请稍后重试。'],
     [503, 'server', 'apiErrors.server', '服务暂时不可用，请稍后重试。'],
   ] as const)('把 HTTP %i 转为 %s 错误', (status, kind, i18nKey, message) => {
-    expect(toApiError(axiosStatusError(status))).toEqual({
+    expectApiError(toApiError(axiosStatusError(status)), {
       kind,
       i18nKey,
       message,
@@ -44,7 +60,7 @@ describe('toApiError', () => {
   })
 
   it('保留未覆盖 HTTP 状态并归为未知错误', () => {
-    expect(toApiError(axiosStatusError(418))).toEqual({
+    expectApiError(toApiError(axiosStatusError(418)), {
       kind: 'unknown',
       i18nKey: 'apiErrors.unknown',
       message: '发生未知错误，请稍后重试。',
@@ -53,7 +69,7 @@ describe('toApiError', () => {
   })
 
   it('非 Axios 异常不会泄漏原始消息', () => {
-    expect(toApiError(new Error('private details'))).toEqual({
+    expectApiError(toApiError(new Error('private details')), {
       kind: 'unknown',
       i18nKey: 'apiErrors.unknown',
       message: '发生未知错误，请稍后重试。',

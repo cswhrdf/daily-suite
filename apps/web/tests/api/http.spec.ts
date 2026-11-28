@@ -89,6 +89,18 @@ describe('http 拦截器', () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1)
   })
 
+  it('非 Axios 异常直接透传，不进入刷新流程', async () => {
+    const error = new Error('adapter failure')
+    const refreshAdapter = vi.fn()
+    refreshHttp.defaults.adapter = refreshAdapter
+    http.defaults.adapter = () => {
+      throw error
+    }
+
+    await expect(http.get('/protected/')).rejects.toBe(error)
+    expect(refreshAdapter).not.toHaveBeenCalled()
+  })
+
   it('非 401 错误直接透传，不触发刷新', async () => {
     const refreshAdapter = vi.fn()
     refreshHttp.defaults.adapter = refreshAdapter

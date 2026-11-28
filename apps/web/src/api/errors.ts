@@ -12,11 +12,23 @@ export type ApiErrorKind =
   | 'unknown'
 
 /** 业务 Store 与组件使用的统一错误结构。 */
-export interface ApiError {
+export class ApiError extends Error {
   kind: ApiErrorKind
-  message: string
   i18nKey: string
   status: number | null
+
+  constructor(
+    kind: ApiErrorKind,
+    i18nKey: string,
+    message: string,
+    status: number | null,
+  ) {
+    super()
+    this.kind = kind
+    this.i18nKey = i18nKey
+    this.message = message
+    this.status = status
+  }
 }
 
 function normalizedError(
@@ -25,7 +37,7 @@ function normalizedError(
   message: string,
   status: number | null,
 ): ApiError {
-  return { kind, i18nKey, message, status }
+  return new ApiError(kind, i18nKey, message, status)
 }
 
 /** 将 Axios 与未知异常转换为稳定、可读的业务错误。 */

@@ -72,6 +72,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tags/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        get: operations["tags_list"];
+        put?: never;
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        post: operations["tags_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tags/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        get: operations["tags_retrieve"];
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        put: operations["tags_update"];
+        post?: never;
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        delete: operations["tags_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description 全局标签的增删改查视图集。
+         *
+         *     查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+         *     不依赖额外的对象级权限类。
+         */
+        patch: operations["tags_partial_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -80,14 +148,91 @@ export interface components {
         AccessToken: {
             readonly access: string;
         };
+        /**
+         * @description * `#C2410C` - #C2410C
+         *     * `#1867C0` - #1867C0
+         *     * `#217A46` - #217A46
+         *     * `#8A5A00` - #8A5A00
+         *     * `#BA1A1A` - #BA1A1A
+         *     * `#5E35B1` - #5E35B1
+         *     * `#00838F` - #00838F
+         *     * `#546E7A` - #546E7A
+         * @enum {string}
+         */
+        ColorEnum: "#C2410C" | "#1867C0" | "#217A46" | "#8A5A00" | "#BA1A1A" | "#5E35B1" | "#00838F" | "#546E7A";
         /** @description 回显输入内容，用于验证 DRF 序列化器往返。 */
         Echo: {
             message: string;
         };
         /** @description 登录请求体：用户名 + 密码。 */
         Login: {
+            /**
+             * 用户名
+             * @description 登录使用的账号名。
+             */
             username: string;
+            /**
+             * 密码
+             * @description 账号对应的密码。
+             */
             password: string;
+        };
+        PaginatedTagList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Tag"][];
+        };
+        /**
+         * @description 全局标签的读写序列化器。
+         *
+         *     名称唯一性只在当前用户范围内校验，跨用户可重名；
+         *     颜色必须落在受控色板内，非法取值返回中文字段错误。
+         */
+        PatchedTag: {
+            readonly id?: number;
+            name?: string;
+            color?: components["schemas"]["ColorEnum"];
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            readonly created_at?: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            readonly updated_at?: string;
+        };
+        /**
+         * @description 全局标签的读写序列化器。
+         *
+         *     名称唯一性只在当前用户范围内校验，跨用户可重名；
+         *     颜色必须落在受控色板内，非法取值返回中文字段错误。
+         */
+        Tag: {
+            readonly id: number;
+            name: string;
+            color: components["schemas"]["ColorEnum"];
+            /**
+             * 创建时间
+             * Format: date-time
+             */
+            readonly created_at: string;
+            /**
+             * 更新时间
+             * Format: date-time
+             */
+            readonly updated_at: string;
         };
     };
     responses: never;
@@ -181,6 +326,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Echo"];
+                };
+            };
+        };
+    };
+    tags_list: {
+        parameters: {
+            query?: {
+                /** @description 用于排序结果的字段。 */
+                ordering?: string;
+                /** @description 分页结果集中的页码。 */
+                page?: number;
+                /** @description 搜索关键词。 */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTagList"];
+                };
+            };
+        };
+    };
+    tags_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Tag"];
+                "application/x-www-form-urlencoded": components["schemas"]["Tag"];
+                "multipart/form-data": components["schemas"]["Tag"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    tags_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 标签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    tags_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 标签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Tag"];
+                "application/x-www-form-urlencoded": components["schemas"]["Tag"];
+                "multipart/form-data": components["schemas"]["Tag"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    tags_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 标签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tags_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标识此 标签 的 唯一整数值。 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTag"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTag"];
+                "multipart/form-data": components["schemas"]["PatchedTag"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
                 };
             };
         };

@@ -57,6 +57,18 @@ describe('collectNavItems', () => {
     ])
   })
 
+  it('空父路径下的空子路径解析为根路径', () => {
+    const routes: RouteRecordRaw[] = [
+      {
+        path: '',
+        component: page,
+        meta: { showInNav: true, title: 'nav.home' },
+      },
+    ]
+
+    expect(collectNavItems(routes)).toEqual([{ title: 'nav.home', to: '/' }])
+  })
+
   it('保留绝对子路由路径，并且不修改路由配置', () => {
     const routes: RouteRecordRaw[] = [
       {
@@ -140,5 +152,21 @@ describe('应用路由 meta', () => {
       { title: 'nav.todos', to: '/todos' },
       { title: 'nav.calendar', to: '/calendar' },
     ])
+  })
+
+  it('执行业务空态页面的懒加载并解析出组件', async () => {
+    const layout = router.options.routes.find((route) => route.path === '/')
+    const lazyRoutes = ['sticky-notes', 'todos', 'calendar'].map((name) => {
+      const route = layout?.children?.find((child) => child.name === name)
+      expect(route?.component).toBeTypeOf('function')
+      return route?.component as () => Promise<{ default: object }>
+    })
+
+    const modules = await Promise.all(lazyRoutes.map((load) => load()))
+
+    expect(modules).toHaveLength(3)
+    for (const module of modules) {
+      expect(module.default).toBeTypeOf('object')
+    }
   })
 })

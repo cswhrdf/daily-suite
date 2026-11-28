@@ -60,6 +60,12 @@ export default defineConfig(({ mode }) => ({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,vue}'],
       exclude: ['src/api/schema.d.ts', 'src/main.ts'],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
     },
   },
 }))

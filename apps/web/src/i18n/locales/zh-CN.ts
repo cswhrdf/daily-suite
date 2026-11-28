@@ -43,6 +43,56 @@ const zhCN = {
   calendar: {
     description: '日历功能将在后续阶段提供。',
   },
+  tags: {
+    toolbar: {
+      label: '标签工具',
+    },
+    filter: {
+      label: '筛选标签',
+      all: '全部标签',
+      clear: '清除筛选',
+      empty: '暂无可用标签，请先创建。',
+    },
+    chip: {
+      listLabel: '标签列表',
+    },
+    manage: {
+      action: '管理标签',
+      title: '管理标签',
+      close: '关闭标签管理',
+      existing: '已有标签',
+      emptyTitle: '还没有标签',
+      empty: '在下方创建第一个标签，供便签、待办和日历共同使用。',
+      edit: '编辑标签“{name}”',
+      delete: '删除标签“{name}”',
+    },
+    form: {
+      createTitle: '新建标签',
+      editTitle: '编辑标签',
+      name: '标签名称',
+      namePlaceholder: '例如：家庭',
+      nameRequired: '请输入标签名称。',
+      color: '标签颜色',
+      colorOption: '使用颜色 {color}',
+      selectedColor: '已选颜色：{color}',
+      cancelEdit: '取消编辑',
+      create: '新建标签',
+      save: '保存修改',
+    },
+    delete: {
+      title: '确认删除标签？',
+      message: '即将删除标签“{name}”。此操作只解除关联，不删除便签、待办或日程。',
+      associations: '关联的便签、待办和日程内容都会保留。',
+      cancel: '取消',
+      confirm: '确认删除',
+    },
+    feedback: {
+      created: '标签已创建。',
+      updated: '标签已保存。',
+      removed: '标签已删除，关联已解除。',
+      rollback: '操作失败，已恢复原状态：{message}',
+    },
+  },
   state: {
     errorTitle: '加载失败',
     retry: '重试',

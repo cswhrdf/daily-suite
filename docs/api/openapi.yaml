@@ -23,6 +23,7 @@ paths:
               $ref: '#/components/schemas/Login'
         required: true
       security:
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -38,6 +39,7 @@ paths:
       tags:
       - auth
       security:
+      - jwtAuth: []
       - {}
       responses:
         '204':
@@ -49,6 +51,7 @@ paths:
       tags:
       - auth
       security:
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -78,6 +81,7 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      - jwtAuth: []
       - {}
       responses:
         '200':
@@ -86,6 +90,206 @@ paths:
               schema:
                 $ref: '#/components/schemas/Echo'
           description: ''
+  /api/tags/:
+    get:
+      operationId: tags_list
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      tags:
+      - tags
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTagList'
+          description: ''
+    post:
+      operationId: tags_create
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+  /api/tags/{id}/:
+    get:
+      operationId: tags_retrieve
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 标签 的 唯一整数值。
+        required: true
+      tags:
+      - tags
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    put:
+      operationId: tags_update
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 标签 的 唯一整数值。
+        required: true
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    patch:
+      operationId: tags_partial_update
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 标签 的 唯一整数值。
+        required: true
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    delete:
+      operationId: tags_destroy
+      description: |-
+        全局标签的增删改查视图集。
+
+        查询集始终按当前登录用户过滤，因此访问他人的标签在取对象阶段即返回 404，
+        不依赖额外的对象级权限类。
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 标签 的 唯一整数值。
+        required: true
+      tags:
+      - tags
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     AccessToken:
@@ -97,6 +301,26 @@ components:
           readOnly: true
       required:
       - access
+    ColorEnum:
+      enum:
+      - '#C2410C'
+      - '#1867C0'
+      - '#217A46'
+      - '#8A5A00'
+      - '#BA1A1A'
+      - '#5E35B1'
+      - '#00838F'
+      - '#546E7A'
+      type: string
+      description: |-
+        * `#C2410C` - #C2410C
+        * `#1867C0` - #1867C0
+        * `#217A46` - #217A46
+        * `#8A5A00` - #8A5A00
+        * `#BA1A1A` - #BA1A1A
+        * `#5E35B1` - #5E35B1
+        * `#00838F` - #00838F
+        * `#546E7A` - #546E7A
     Echo:
       type: object
       description: 回显输入内容，用于验证 DRF 序列化器往返。
@@ -112,13 +336,98 @@ components:
       properties:
         username:
           type: string
+          title: 用户名
+          description: 登录使用的账号名。
           maxLength: 150
         password:
           type: string
+          title: 密码
+          description: 账号对应的密码。
           maxLength: 128
       required:
       - password
       - username
+    PaginatedTagList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+    PatchedTag:
+      type: object
+      description: |-
+        全局标签的读写序列化器。
+
+        名称唯一性只在当前用户范围内校验，跨用户可重名；
+        颜色必须落在受控色板内，非法取值返回中文字段错误。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          $ref: '#/components/schemas/ColorEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 更新时间
+    Tag:
+      type: object
+      description: |-
+        全局标签的读写序列化器。
+
+        名称唯一性只在当前用户范围内校验，跨用户可重名；
+        颜色必须落在受控色板内，非法取值返回中文字段错误。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          $ref: '#/components/schemas/ColorEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: 更新时间
+      required:
+      - color
+      - created_at
+      - id
+      - name
+      - updated_at
   securitySchemes:
     cookieAuth:
       type: apiKey

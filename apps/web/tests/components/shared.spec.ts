@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { VSkeletonLoader } from 'vuetify/components'
+import { VSkeletonLoader, VSnackbar } from 'vuetify/components'
 
 import AppEmptyState from '@/components/shared/AppEmptyState.vue'
 import AppErrorState from '@/components/shared/AppErrorState.vue'
@@ -78,13 +78,53 @@ describe('GlobalSnackbar', () => {
     expect(state.visible).toBe(false)
   })
 
-  it('全局组件展示当前提示消息', async () => {
+  it('全局组件展示无操作提示消息', async () => {
     const wrapper = mount(GlobalSnackbar, { attachTo: document.body })
     useSnackbar().success('已保存')
     await flushPromises()
     await nextTick()
 
     expect(document.body.textContent).toContain('已保存')
+    expect(document.querySelectorAll('button')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('全局组件同步可见性并处理撤销与关闭点击', async () => {
+    const wrapper = mount(GlobalSnackbar, { attachTo: document.body })
+    const snackbar = useSnackbar()
+    const { state } = useSnackbarState()
+    const onUndo = vi.fn()
+    snackbar.undo('已删除便签', onUndo)
+    await flushPromises()
+
+    wrapper.findComponent(VSnackbar).vm.$emit('update:modelValue', false)
+    await nextTick()
+    expect(state.visible).toBe(false)
+
+    snackbar.undo('已删除便签', onUndo)
+    await flushPromises()
+    const action = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent.trim() === '撤销',
+    )
+    expect(action).toBeInstanceOf(HTMLButtonElement)
+    if (!(action instanceof HTMLButtonElement)) {
+      throw new Error('找不到撤销按钮')
+    }
+    action.click()
+    await nextTick()
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    expect(state.visible).toBe(false)
+
+    snackbar.success('再次保存')
+    await flushPromises()
+    const dismissButton = document.querySelector('[aria-label="关闭提示"]')
+    expect(dismissButton).toBeInstanceOf(HTMLButtonElement)
+    if (!(dismissButton instanceof HTMLButtonElement)) {
+      throw new Error('找不到关闭按钮')
+    }
+    dismissButton.click()
+    await nextTick()
+    expect(state.visible).toBe(false)
     wrapper.unmount()
   })
 })

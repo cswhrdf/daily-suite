@@ -144,6 +144,9 @@ show_missing = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+# Django 自动生成的迁移文件保持官方生成格式（单引号、无 docstring、长行、可变类属性），
+# 逐条改写会与下次 makemigrations 的产物反复冲突，故整体排除，不纳入 lint。
+extend-exclude = ["*/migrations/*.py"]
 
 [tool.ruff.lint]
 # 启用全部规则；与 Django/中文项目本质冲突或互相矛盾的少数规则在下方逐条豁免。
@@ -187,6 +190,8 @@ strict = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
 # 类型检查范围：config（配置与认证）、toolkit（业务应用）与 tests。
 files = ["config", "toolkit", "tests"]
+# Django 自动生成的迁移文件不参与类型检查。
+exclude = ["/migrations/"]
 
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
