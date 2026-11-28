@@ -93,8 +93,10 @@ class RefreshView(APIView):
             )
         validated = refresh_serializer.validated_data
         response = Response({"access": validated["access"]})
-        # 开启轮换时返回新 refresh；未开启时沿用原值重写，行为一致。
-        set_refresh_cookie(response, validated.get("refresh", raw_refresh))
+        # 仅在服务端明确返回新 refresh 时才重写 Cookie，避免回写客户端提交的原始值。
+        new_refresh = validated.get("refresh")
+        if new_refresh is not None:
+            set_refresh_cookie(response, new_refresh)
         return response
 
 
