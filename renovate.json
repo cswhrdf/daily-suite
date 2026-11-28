@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "docker:pinDigests"],
+  "enabledManagers": ["dockerfile"],
+  "timezone": "Asia/Shanghai",
+  "schedule": ["before 5am on monday"],
+  "commitMessagePrefix": "chore(docker)",
+  "labels": ["dependencies"],
+  "dependencyDashboard": {
+    "enabled": true
+  },
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "packageRules": [
+    {
+      "description": "docker/dockerfile 是 # syntax= 指令引用的前端镜像，不是运行基础镜像，不纳入自动更新",
+      "matchManagers": ["dockerfile"],
+      "matchDepTypes": ["syntax"],
+      "enabled": false
+    },
+    {
+      "description": "ghcr.io/astral-sh/uv 只用于构建期 COPY --from，不是 FROM 基础镜像，版本仍由人工对齐",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["ghcr.io/astral-sh/uv"],
+      "enabled": false
+    },
+    {
+      "description": "caddy 走 --profile tls 的自建 xcaddy 镜像，不在 Trivy 镜像矩阵内，保持人工升级",
+      "matchFileNames": ["docker/caddy.Dockerfile"],
+      "enabled": false
+    }
+  ]
+}

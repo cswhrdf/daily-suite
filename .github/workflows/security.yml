@@ -10,9 +10,15 @@
 #
 # 为什么 Trivy 既扫源码也扫镜像：
 #   - fs 模式：扫仓库里的锁文件/配置（含 IaC 与 secret），不依赖镜像构建；
-#   - image 模式：扫实际运行时基础镜像的 OS 包漏洞，镜像 tag 与
-#     docker/backend.Dockerfile（python:3.12-slim-bookworm）和
-#     docker/web.Dockerfile（nginx:1.30-alpine）保持一致。
+#   - image 模式：扫实际使用的基础镜像的 OS 包漏洞。
+#
+# 镜像列表只有一处事实来源：
+#   docker/backend.Dockerfile 与 docker/web.Dockerfile 的 FROM 行。
+#   base-images job 调用 .github/scripts/base_images.py 实时解析出 JSON matrix，
+#   trivy-image 通过 needs + fromJSON 使用，workflow 内不再手写镜像 tag。
+#   基础镜像的 tag/digest 由 Renovate（renovate.json，docker:pinDigests）
+#   负责固定与更新，从而能捕获「tag 不变但上游镜像被重建」的 digest 变化；
+#   Dependabot 继续负责 uv / npm / github-actions，两者职责不重叠。
 #
 # 私有仓库没有 GHAS 时：
 #   - Trivy 的 SARIF 上传（GitHub Security 标签页）会失败，故默认不做 SARIF 上传，
@@ -32,6 +38,7 @@ on:
       - "apps/**/package.json"
       - "apps/**/pnpm-lock.yaml"
       - "docker/**"
+      - ".github/scripts/**"
       - ".github/workflows/security.yml"
   schedule:
     # 每周一 03:00 UTC 复查一次（依赖不变但漏洞库在更新）。
@@ -69,17 +76,34 @@ jobs:
           exit-code: "1"
           format: table
 
-  trivy-image:
-    name: Trivy 镜像扫描（${{ matrix.image }}）
+  base-images:
+    name: 从 Dockerfile 派生基础镜像矩阵
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.derive.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 解析脚本单元测试
+        run: python3 -m unittest discover -s .github/scripts -p "test_*.py" -v
+
+      - name: 解析 FROM 行并输出 matrix
+        id: derive
+        run: python3 .github/scripts/base_images.py --github-output >> "$GITHUB_OUTPUT"
+
+  trivy-image:
+    name: Trivy 镜像扫描（${{ matrix.name }}）
+    runs-on: ubuntu-latest
+    needs: base-images
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        # 与 Dockerfile 中的基础镜像 tag 一致；升级镜像时两处同步改。
-        image:
-          - python:3.12-slim-bookworm
-          - nginx:1.30-alpine
+      # 镜像列表由 base-images 从 Dockerfile 的 FROM 行派生，不再硬编码。
+      matrix: ${{ fromJSON(needs.base-images.outputs.matrix) }}
     steps:
       - name: Trivy image
         uses: aquasecurity/trivy-action@master

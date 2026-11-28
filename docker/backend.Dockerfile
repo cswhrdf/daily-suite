@@ -9,14 +9,15 @@
 #     避免镜像里的依赖与本地/CI 漂移。
 #   - 非 root：runtime 以 uid/gid 10001 的 app 用户运行，应用进程不允许 root 启动。
 #   - 健康检查：用镜像自带的 python 探针请求 /healthz，无需额外安装 curl/wget。
-#   - digest：基础镜像当前固定到具体发行版 tag（slim-bookworm），兼顾可读性与可复现；
-#     TODO(上线前)：`docker pull` 后把 tag 换成 `tag@sha256:<digest>` 彻底锁定。
+#   - 基础镜像：FROM 行刻意写成字面量（不引入 ARG 变量），它是唯一事实来源；
+#     Security Scan 的 trivy-image 矩阵由 .github/scripts/base_images.py 从
+#     docker/backend.Dockerfile 与 docker/web.Dockerfile 的 FROM 行实时派生；
+#     Renovate 按 docker:pinDigests 自动补 `@sha256:<digest>` 并持续更新 digest，
+#     从而捕获上游「tag 不变但镜像被重建」的发布。
 # =============================================================================
 
-ARG PYTHON_VERSION=3.12
-
 # ---------- Stage 1：builder ----------
-FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 # uv 官方静态镜像里的二进制（版本与仓库本地 uv 对齐），避免构建期再经 pip 下载 uv。
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
@@ -37,7 +38,7 @@ COPY apps/backend/ ./
 RUN uv sync --locked --no-dev
 
 # ---------- Stage 2：runtime ----------
-FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
+FROM python:3.12-slim-bookworm AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
